@@ -1,18 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { FileText, Calendar } from "lucide-react";
+import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { FileText, Download } from "lucide-react";
 import { Order, RestaurantSettings } from "@/lib/pdf";
 import { 
+  generateDailySalesPDF,
+  generateMonthlySalesPDF,
   generateWeeklySalesPDF, 
   generateYearlySalesPDF, 
   generatePaymentMethodPDF, 
   generateItemWisePDF 
 } from "@/lib/pdf";
+
+type ReportType = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'dateRange';
 
 interface ReportsSectionProps {
   orders: Order[];
@@ -27,336 +32,376 @@ const ReportsSection: React.FC<ReportsSectionProps> = ({
   generateDailyReport,
   generateMonthlyReport
 }) => {
+  const [reportType, setReportType] = useState<ReportType>('daily');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedWeek, setSelectedWeek] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [reportStartDate, setReportStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [reportEndDate, setReportEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Payment method data
-  const paymentMethodData = orders.reduce((acc, order) => {
-    const method = order.paymentMethod;
-    const existing = acc.find(item => item.method === method);
-    if (existing) {
-      existing.value += order.total;
-    } else {
-      acc.push({ method, value: order.total });
+  const reportData = useMemo(() => {
+    let filteredOrders: Order[] = [];
+    let title = '';
+
+    switch (reportType) {
+      case 'daily': {
+        const targetDate = new Date(selectedDate);
+        filteredOrders = orders.filter(order => {
+          const orderDate = new Date(order.timestamp);
+          return orderDate.toDateString() === targetDate.toDateString();
+        });
+        title = `Daily Report - ${targetDate.toLocaleDateString()}`;
+        break;
+      }
+      case 'weekly': {
+        const weekStart = new Date(selectedWeek);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        filteredOrders = orders.filter(order => {
+          const orderDate = new Date(order.timestamp);
+          return orderDate >= weekStart && orderDate <= weekEnd;
+        });
+        title = `Weekly Report - ${weekStart.toLocaleDateString()} to ${weekEnd.toLocaleDateString()}`;
+        break;
+      }
+      case 'monthly': {
+        filteredOrders = orders.filter(order => {
+          const orderDate = new Date(order.timestamp);
+          return orderDate.getMonth() + 1 === selectedMonth && orderDate.getFullYear() === selectedYear;
+        });
+        const monthName = new Date(selectedYear, selectedMonth - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        title = `Monthly Report - ${monthName}`;
+        break;
+      }
+      case 'yearly': {
+        filteredOrders = orders.filter(order => {
+          const orderDate = new Date(order.timestamp);
+          return orderDate.getFullYear() === selectedYear;
+        });
+        title = `Yearly Report - ${selectedYear}`;
+        break;
+      }
+      case 'dateRange': {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        filteredOrders = orders.filter(order => {
+          const orderDate = new Date(order.timestamp);
+          return orderDate >= start && orderDate <= end;
+        });
+        title = `Date Range Report - ${start.toLocaleDateString()} to ${end.toLocaleDateString()}`;
+        break;
+      }
     }
-    return acc;
-  }, [] as { method: string; value: number }[]);
 
-  const paymentMethodConfig = {
-    cash: { label: "Cash", color: "hsl(var(--primary))" },
-    card: { label: "Card", color: "hsl(var(--secondary))" },
-    upi: { label: "UPI", color: "hsl(var(--accent))" }
-  };
+    // Calculate totals by payment method
+    const totals = filteredOrders.reduce((acc, order) => {
+      acc.totalRevenue += order.total;
+      acc.totalOrders += 1;
+      if (order.paymentMethod === 'cash') acc.cashTotal += order.total;
+      if (order.paymentMethod === 'upi') acc.upiTotal += order.total;
+      if (order.paymentMethod === 'card') acc.cardTotal += order.total;
+      return acc;
+    }, { totalRevenue: 0, totalOrders: 0, cashTotal: 0, upiTotal: 0, cardTotal: 0 });
 
-  // Daily sales data (last 7 days)
-  const last7DaysData = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    const dayOrders = orders.filter(order => {
-      const orderDate = new Date(order.timestamp);
-      return orderDate.toDateString() === date.toDateString();
-    });
-    return {
-      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      revenue: dayOrders.reduce((sum, order) => sum + order.total, 0)
+    // Prepare chart data
+    const paymentMethodData = [
+      { method: 'Cash', value: totals.cashTotal, color: 'hsl(var(--primary))' },
+      { method: 'UPI', value: totals.upiTotal, color: 'hsl(var(--chart-2))' },
+      { method: 'Card', value: totals.cardTotal, color: 'hsl(var(--chart-3))' }
+    ].filter(item => item.value > 0);
+
+    // Daily breakdown for non-daily reports
+    let dailyBreakdown: Array<{
+      date: string;
+      orders: number;
+      cash: number;
+      upi: number;
+      card: number;
+      total: number;
+    }> = [];
+
+    if (reportType !== 'daily') {
+      const dateMap = new Map<string, { orders: number; cash: number; upi: number; card: number; total: number }>();
+      
+      filteredOrders.forEach(order => {
+        const dateKey = new Date(order.timestamp).toLocaleDateString();
+        if (!dateMap.has(dateKey)) {
+          dateMap.set(dateKey, { orders: 0, cash: 0, upi: 0, card: 0, total: 0 });
+        }
+        const dayData = dateMap.get(dateKey)!;
+        dayData.orders += 1;
+        dayData.total += order.total;
+        if (order.paymentMethod === 'cash') dayData.cash += order.total;
+        if (order.paymentMethod === 'upi') dayData.upi += order.total;
+        if (order.paymentMethod === 'card') dayData.card += order.total;
+      });
+
+      dailyBreakdown = Array.from(dateMap.entries())
+        .map(([date, data]) => ({ date, ...data }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }
+
+    return { 
+      title, 
+      totals, 
+      paymentMethodData, 
+      dailyBreakdown,
+      filteredOrders 
     };
-  }).reverse();
+  }, [orders, reportType, selectedDate, selectedWeek, selectedMonth, selectedYear, startDate, endDate]);
 
-  const dailySalesConfig = {
-    revenue: { label: "Revenue", color: "hsl(var(--primary))" }
+  const handleGeneratePDF = () => {
+    switch (reportType) {
+      case 'daily':
+        generateDailyReport(new Date(selectedDate));
+        break;
+      case 'weekly': {
+        const weekDate = new Date(selectedWeek);
+        const pdf = generateWeeklySalesPDF(orders, weekDate, settings);
+        pdf.save(`weekly-sales-${selectedWeek}.pdf`);
+        break;
+      }
+      case 'monthly':
+        generateMonthlyReport(selectedMonth - 1, selectedYear);
+        break;
+      case 'yearly': {
+        const pdf = generateYearlySalesPDF(orders, selectedYear, settings);
+        pdf.save(`yearly-sales-${selectedYear}.pdf`);
+        break;
+      }
+      case 'dateRange': {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const pdf = generatePaymentMethodPDF(orders, start, end, settings);
+        pdf.save(`date-range-report-${startDate}-to-${endDate}.pdf`);
+        break;
+      }
+    }
   };
 
-  // Statistics calculations
-  const today = new Date();
-  const todayOrders = orders.filter(order => {
-    const orderDate = new Date(order.timestamp);
-    return orderDate.toDateString() === today.toDateString();
-  });
-  const todayRevenue = todayOrders.reduce((sum, order) => sum + order.total, 0);
-
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - today.getDay());
-  const weekOrders = orders.filter(order => {
-    const orderDate = new Date(order.timestamp);
-    return orderDate >= weekStart && orderDate <= today;
-  });
-  const weekRevenue = weekOrders.reduce((sum, order) => sum + order.total, 0);
-
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  const monthOrders = orders.filter(order => {
-    const orderDate = new Date(order.timestamp);
-    return orderDate >= monthStart && orderDate <= today;
-  });
-  const monthRevenue = monthOrders.reduce((sum, order) => sum + order.total, 0);
-
-  const yearStart = new Date(today.getFullYear(), 0, 1);
-  const yearOrders = orders.filter(order => {
-    const orderDate = new Date(order.timestamp);
-    return orderDate >= yearStart && orderDate <= today;
-  });
-  const yearRevenue = yearOrders.reduce((sum, order) => sum + order.total, 0);
-
-  const handleWeeklyReport = () => {
-    const weekDate = new Date(selectedWeek);
-    const pdf = generateWeeklySalesPDF(orders, weekDate, settings);
-    pdf.save(`weekly-sales-${selectedWeek}.pdf`);
-  };
-
-  const handleYearlyReport = () => {
-    const pdf = generateYearlySalesPDF(orders, selectedYear, settings);
-    pdf.save(`yearly-sales-${selectedYear}.pdf`);
-  };
-
-  const handlePaymentMethodReport = () => {
-    const startDate = new Date(reportStartDate);
-    const endDate = new Date(reportEndDate);
-    const pdf = generatePaymentMethodPDF(orders, startDate, endDate, settings);
-    pdf.save(`payment-method-report-${reportStartDate}-to-${reportEndDate}.pdf`);
-  };
-
-  const handleItemWiseReport = () => {
-    const startDate = new Date(reportStartDate);
-    const endDate = new Date(reportEndDate);
-    const pdf = generateItemWisePDF(orders, startDate, endDate, settings);
-    pdf.save(`item-wise-report-${reportStartDate}-to-${reportEndDate}.pdf`);
+  const chartConfig = {
+    cash: { label: "Cash", color: "hsl(var(--primary))" },
+    upi: { label: "UPI", color: "hsl(var(--chart-2))" },
+    card: { label: "Card", color: "hsl(var(--chart-3))" }
   };
 
   return (
     <div className="space-y-6">
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <h4 className="font-medium text-sm text-muted-foreground">Today</h4>
-          <p className="text-2xl font-bold">₹{todayRevenue.toFixed(2)}</p>
-          <p className="text-sm text-muted-foreground">{todayOrders.length} orders</p>
-        </Card>
-        <Card className="p-4">
-          <h4 className="font-medium text-sm text-muted-foreground">This Week</h4>
-          <p className="text-2xl font-bold">₹{weekRevenue.toFixed(2)}</p>
-          <p className="text-sm text-muted-foreground">{weekOrders.length} orders</p>
-        </Card>
-        <Card className="p-4">
-          <h4 className="font-medium text-sm text-muted-foreground">This Month</h4>
-          <p className="text-2xl font-bold">₹{monthRevenue.toFixed(2)}</p>
-          <p className="text-sm text-muted-foreground">{monthOrders.length} orders</p>
-        </Card>
-        <Card className="p-4">
-          <h4 className="font-medium text-sm text-muted-foreground">This Year</h4>
-          <p className="text-2xl font-bold">₹{yearRevenue.toFixed(2)}</p>
-          <p className="text-sm text-muted-foreground">{yearOrders.length} orders</p>
-        </Card>
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Payment Methods</h3>
-          <div className="h-64">
-            <ChartContainer config={paymentMethodConfig}>
-              <PieChart>
-                <ChartTooltip 
-                  cursor={false}
-                  content={<ChartTooltipContent hideLabel />}
-                />
-                <Pie 
-                  data={paymentMethodData} 
-                  dataKey="value" 
-                  nameKey="method"
-                  innerRadius={60}
-                />
-              </PieChart>
-            </ChartContainer>
+      {/* Filter Bar */}
+      <Card className="p-6">
+        <div className="flex flex-col lg:flex-row gap-4 items-end">
+          <div className="flex-1 space-y-2">
+            <Label>Report Type</Label>
+            <Select value={reportType} onValueChange={(value: ReportType) => setReportType(value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="yearly">Yearly</SelectItem>
+                <SelectItem value="dateRange">Date Range</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </Card>
 
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Daily Sales (Last 7 Days)</h3>
-          <div className="h-64">
-            <ChartContainer config={dailySalesConfig}>
-              <BarChart data={last7DaysData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <ChartTooltip 
-                  cursor={false}
-                  content={<ChartTooltipContent />}
-                />
-                <Bar dataKey="revenue" fill="hsl(var(--primary))" />
-              </BarChart>
-            </ChartContainer>
-          </div>
-        </Card>
-      </div>
-
-      {/* PDF Report Generation */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Daily Reports */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Daily Reports</h3>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="daily-date">Select Date</Label>
+          {reportType === 'daily' && (
+            <div className="flex-1 space-y-2">
+              <Label>Date</Label>
               <Input
-                id="daily-date"
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
               />
             </div>
-            <Button 
-              onClick={() => generateDailyReport(new Date(selectedDate))} 
-              className="w-full"
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              Generate Daily PDF
-            </Button>
-          </div>
-        </Card>
+          )}
 
-        {/* Weekly Reports */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Weekly Reports</h3>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="weekly-date">Select Week Starting Date</Label>
+          {reportType === 'weekly' && (
+            <div className="flex-1 space-y-2">
+              <Label>Week Start Date</Label>
               <Input
-                id="weekly-date"
                 type="date"
                 value={selectedWeek}
                 onChange={(e) => setSelectedWeek(e.target.value)}
               />
             </div>
-            <Button onClick={handleWeeklyReport} className="w-full">
-              <FileText className="mr-2 h-4 w-4" />
-              Generate Weekly PDF
-            </Button>
-          </div>
-        </Card>
+          )}
 
-        {/* Monthly Reports */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Monthly Reports</h3>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label htmlFor="monthly-month">Month</Label>
-                <Input
-                  id="monthly-month"
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={selectedMonth + 1}
-                  onChange={(e) => setSelectedMonth(parseInt(e.target.value) - 1)}
-                />
+          {reportType === 'monthly' && (
+            <>
+              <div className="flex-1 space-y-2">
+                <Label>Month</Label>
+                <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => (
+                      <SelectItem key={i + 1} value={(i + 1).toString()}>
+                        {new Date(2024, i).toLocaleDateString('en-US', { month: 'long' })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <Label htmlFor="monthly-year">Year</Label>
+              <div className="flex-1 space-y-2">
+                <Label>Year</Label>
                 <Input
-                  id="monthly-year"
                   type="number"
-                  min="2000"
-                  max="2100"
+                  min="2020"
+                  max="2030"
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(parseInt(e.target.value))}
                 />
               </div>
-            </div>
-            <Button 
-              onClick={() => generateMonthlyReport(selectedMonth, selectedYear)} 
-              className="w-full"
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              Generate Monthly PDF
-            </Button>
-          </div>
-        </Card>
+            </>
+          )}
 
-        {/* Yearly Reports */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Yearly Reports</h3>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="yearly-year">Select Year</Label>
+          {reportType === 'yearly' && (
+            <div className="flex-1 space-y-2">
+              <Label>Year</Label>
               <Input
-                id="yearly-year"
                 type="number"
-                min="2000"
-                max="2100"
+                min="2020"
+                max="2030"
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
               />
             </div>
-            <Button onClick={handleYearlyReport} className="w-full">
-              <FileText className="mr-2 h-4 w-4" />
-              Generate Yearly PDF
-            </Button>
-          </div>
-        </Card>
+          )}
 
-        {/* Payment Method Reports */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Payment Method Report</h3>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="payment-start">Start Date</Label>
-              <Input
-                id="payment-start"
-                type="date"
-                value={reportStartDate}
-                onChange={(e) => setReportStartDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="payment-end">End Date</Label>
-              <Input
-                id="payment-end"
-                type="date"
-                value={reportEndDate}
-                onChange={(e) => setReportEndDate(e.target.value)}
-              />
-            </div>
-            <Button onClick={handlePaymentMethodReport} className="w-full">
-              <FileText className="mr-2 h-4 w-4" />
-              Generate Payment PDF
-            </Button>
-          </div>
-        </Card>
+          {reportType === 'dateRange' && (
+            <>
+              <div className="flex-1 space-y-2">
+                <Label>Start Date</Label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="flex-1 space-y-2">
+                <Label>End Date</Label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            </>
+          )}
 
-        {/* Item-wise Reports */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Item-wise Report</h3>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="item-start">Start Date</Label>
-              <Input
-                id="item-start"
-                type="date"
-                value={reportStartDate}
-                onChange={(e) => setReportStartDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="item-end">End Date</Label>
-              <Input
-                id="item-end"
-                type="date"
-                value={reportEndDate}
-                onChange={(e) => setReportEndDate(e.target.value)}
-              />
-            </div>
-            <Button onClick={handleItemWiseReport} className="w-full">
-              <FileText className="mr-2 h-4 w-4" />
-              Generate Item-wise PDF
-            </Button>
-          </div>
+          <Button onClick={handleGeneratePDF} className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Generate PDF
+          </Button>
+        </div>
+      </Card>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="text-sm font-medium text-muted-foreground">Total Revenue</div>
+          <div className="text-2xl font-bold">₹{reportData.totals.totalRevenue.toFixed(2)}</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-sm font-medium text-muted-foreground">Orders</div>
+          <div className="text-2xl font-bold">{reportData.totals.totalOrders}</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-sm font-medium text-muted-foreground">Cash Sales</div>
+          <div className="text-2xl font-bold">₹{reportData.totals.cashTotal.toFixed(2)}</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-sm font-medium text-muted-foreground">UPI Sales</div>
+          <div className="text-2xl font-bold">₹{reportData.totals.upiTotal.toFixed(2)}</div>
         </Card>
       </div>
+
+      {/* Charts and Data */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Payment Method Chart */}
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Payment Method Breakdown</h3>
+          <div className="h-64">
+            <ChartContainer config={chartConfig}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <ChartTooltip 
+                    cursor={false}
+                    content={<ChartTooltipContent hideLabel />}
+                  />
+                  <Pie 
+                    data={reportData.paymentMethodData} 
+                    dataKey="value" 
+                    nameKey="method"
+                    innerRadius={60}
+                    fill="var(--color-cash)"
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </div>
+        </Card>
+
+        {/* Daily Breakdown Chart (for non-daily reports) */}
+        {reportType !== 'daily' && reportData.dailyBreakdown.length > 0 && (
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Daily Breakdown</h3>
+            <div className="h-64">
+              <ChartContainer config={chartConfig}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={reportData.dailyBreakdown}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="cash" stackId="payment" fill="var(--color-cash)" />
+                    <Bar dataKey="upi" stackId="payment" fill="var(--color-upi)" />
+                    <Bar dataKey="card" stackId="payment" fill="var(--color-card)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </div>
+          </Card>
+        )}
+      </div>
+
+      {/* Data Table */}
+      {reportType !== 'daily' && reportData.dailyBreakdown.length > 0 && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Daily Sales Breakdown</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2">Date</th>
+                  <th className="text-right py-2">Orders</th>
+                  <th className="text-right py-2">Cash</th>
+                  <th className="text-right py-2">UPI</th>
+                  <th className="text-right py-2">Card</th>
+                  <th className="text-right py-2">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reportData.dailyBreakdown.map((day, index) => (
+                  <tr key={index} className="border-b border-border/50">
+                    <td className="py-2">{day.date}</td>
+                    <td className="text-right py-2">{day.orders}</td>
+                    <td className="text-right py-2">₹{day.cash.toFixed(2)}</td>
+                    <td className="text-right py-2">₹{day.upi.toFixed(2)}</td>
+                    <td className="text-right py-2">₹{day.card.toFixed(2)}</td>
+                    <td className="text-right py-2 font-medium">₹{day.total.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };
-
 export default ReportsSection;
