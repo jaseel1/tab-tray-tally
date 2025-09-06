@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -17,22 +18,21 @@ import {
   ShoppingCart,
   CreditCard,
   Trash2,
-  Search
+  Search,
+  Printer,
+  Download,
+  Calendar,
+  FileText
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { MenuManager, MenuItem } from "@/components/MenuManager";
+import { ReceiptPreview } from "@/components/ReceiptPreview";
+import { generateDailySalesPDF, generateMonthlySalesPDF, RestaurantSettings } from "@/lib/pdf";
 
 import burgerImage from "@/assets/burger.jpg";
 import pizzaImage from "@/assets/pizza.jpg";
 import pastaImage from "@/assets/pasta.jpg";
 import cokeImage from "@/assets/coke.jpg";
-
-interface MenuItem {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  category: string;
-}
 
 interface CartItem extends MenuItem {
   quantity: number;
@@ -47,19 +47,83 @@ interface Order {
   status: string;
 }
 
-const menuItems: MenuItem[] = [
+const defaultMenuItems: MenuItem[] = [
   { id: "1", name: "Classic Burger", price: 120, image: burgerImage, category: "Mains" },
   { id: "2", name: "Margherita Pizza", price: 250, image: pizzaImage, category: "Mains" },
   { id: "3", name: "Creamy Pasta", price: 180, image: pastaImage, category: "Mains" },
   { id: "4", name: "Coca Cola", price: 60, image: cokeImage, category: "Beverages" },
 ];
 
+const defaultSettings: RestaurantSettings = {
+  name: "My Restaurant",
+  address: "123 Restaurant Street, City",
+  phone: "+91 12345 67890",
+  email: "info@myrestaurant.com",
+  taxRate: 18
+};
+
 export default function BillingApp() {
   const [activeTab, setActiveTab] = useState("home");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(defaultMenuItems);
+  const [settings, setSettings] = useState<RestaurantSettings>(defaultSettings);
   const [searchTerm, setSearchTerm] = useState("");
+  const [receiptPreview, setReceiptPreview] = useState<{ isOpen: boolean; order: Order | null }>({
+    isOpen: false,
+    order: null
+  });
   const { toast } = useToast();
+
+  // Load data from localStorage on component mount
+  useEffect(() => {
+    const savedOrders = localStorage.getItem('pos-orders');
+    const savedMenuItems = localStorage.getItem('pos-menu-items');
+    const savedSettings = localStorage.getItem('pos-settings');
+    
+    if (savedOrders) {
+      try {
+        const parsed = JSON.parse(savedOrders);
+        // Convert timestamp strings back to Date objects
+        const ordersWithDates = parsed.map((order: any) => ({
+          ...order,
+          timestamp: new Date(order.timestamp)
+        }));
+        setOrders(ordersWithDates);
+      } catch (error) {
+        console.error('Error loading orders:', error);
+      }
+    }
+    
+    if (savedMenuItems) {
+      try {
+        setMenuItems(JSON.parse(savedMenuItems));
+      } catch (error) {
+        console.error('Error loading menu items:', error);
+      }
+    }
+    
+    if (savedSettings) {
+      try {
+        setSettings(JSON.parse(savedSettings));
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+  }, []);
+
+  // Save to localStorage whenever data changes
+  useEffect(() => {
+    localStorage.setItem('pos-orders', JSON.stringify(orders));
+  }, [orders]);
+
+  useEffect(() => {
+    localStorage.setItem('pos-menu-items', JSON.stringify(menuItems));
+  }, [menuItems]);
+
+  useEffect(() => {
+    localStorage.setItem('pos-settings', JSON.stringify(settings));
+  }, [settings]);
 
   const addToCart = (item: MenuItem) => {
     setCart(prevCart => {
@@ -122,9 +186,39 @@ export default function BillingApp() {
 
     setOrders(prevOrders => [newOrder, ...prevOrders]);
     setCart([]);
+    
+    // Show receipt preview
+    setReceiptPreview({ isOpen: true, order: newOrder });
+    
     toast({
       title: "Order processed successfully",
       description: `Order #${newOrder.id} has been completed.`,
+    });
+  };
+
+  const handleSettingsChange = (field: keyof RestaurantSettings, value: string | number) => {
+    setSettings(prev => ({ ...prev, [field]: value }));
+  };
+
+  const generateDailyReport = () => {
+    const today = new Date();
+    const pdf = generateDailySalesPDF(orders, today, settings);
+    pdf.save(`daily-report-${today.toISOString().split('T')[0]}.pdf`);
+    
+    toast({
+      title: "Report Generated",
+      description: "Daily sales report has been downloaded.",
+    });
+  };
+
+  const generateMonthlyReport = () => {
+    const now = new Date();
+    const pdf = generateMonthlySalesPDF(orders, now.getMonth(), now.getFullYear(), settings);
+    pdf.save(`monthly-report-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.pdf`);
+    
+    toast({
+      title: "Report Generated", 
+      description: "Monthly sales report has been downloaded.",
     });
   };
 
@@ -415,33 +509,35 @@ export default function BillingApp() {
                 </CardContent>
               </Card>
             </div>
+            
+            {/* PDF Report Generation */}
+            <Card className="rounded-2xl shadow-md">
+              <CardContent className="p-4">
+                <h3 className="font-semibold mb-4 text-foreground">Generate Reports</h3>
+                <div className="space-y-3">
+                  <Button
+                    onClick={generateDailyReport}
+                    className="w-full bg-primary hover:bg-primary/90"
+                  >
+                    <Calendar className="mr-2" size={16} />
+                    Download Daily Report (PDF)
+                  </Button>
+                  <Button
+                    onClick={generateMonthlyReport}
+                    className="w-full bg-secondary hover:bg-secondary/80"
+                  >
+                    <FileText className="mr-2" size={16} />
+                    Download Monthly Report (PDF)
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
         {/* Menu Management */}
         <TabsContent value="menu">
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold text-foreground mb-4">Menu Items</h2>
-            
-            <div className="space-y-3">
-              {menuItems.map((item) => (
-                <Card key={item.id} className="rounded-2xl shadow-md">
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <img 
-                      src={item.image} 
-                      alt={item.name} 
-                      className="w-16 h-16 object-cover rounded-xl"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-foreground">{item.name}</h3>
-                      <p className="text-muted-foreground text-sm">{item.category}</p>
-                      <p className="font-medium text-primary">₹{item.price}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
+          <MenuManager items={menuItems} onItemsChange={setMenuItems} />
         </TabsContent>
 
         {/* Orders History */}
@@ -468,9 +564,18 @@ export default function BillingApp() {
                         </span>
                       </div>
                       
-                      <div className="text-sm text-muted-foreground mb-2">
-                        {order.timestamp.toLocaleDateString()} {order.timestamp.toLocaleTimeString()}
-                      </div>
+                       <div className="text-sm text-muted-foreground mb-2 flex justify-between items-center">
+                         <span>{new Date(order.timestamp).toLocaleDateString()} {new Date(order.timestamp).toLocaleTimeString()}</span>
+                         <Button
+                           size="sm"
+                           variant="outline"
+                           onClick={() => setReceiptPreview({ isOpen: true, order })}
+                           className="rounded-xl"
+                         >
+                           <Receipt size={14} className="mr-1" />
+                           Print
+                         </Button>
+                       </div>
                       
                       <div className="space-y-1 mb-3">
                         {order.items.map((item) => (
@@ -503,16 +608,40 @@ export default function BillingApp() {
                 <h3 className="font-semibold mb-4 text-foreground">Restaurant Information</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-sm text-muted-foreground">Restaurant Name</label>
-                    <Input placeholder="My Restaurant" className="rounded-xl" />
+                    <Label className="text-sm text-muted-foreground">Restaurant Name</Label>
+                    <Input 
+                      value={settings.name}
+                      onChange={(e) => handleSettingsChange('name', e.target.value)}
+                      placeholder="My Restaurant" 
+                      className="rounded-xl" 
+                    />
                   </div>
                   <div>
-                    <label className="text-sm text-muted-foreground">Address</label>
-                    <Input placeholder="Restaurant Address" className="rounded-xl" />
+                    <Label className="text-sm text-muted-foreground">Address</Label>
+                    <Input 
+                      value={settings.address}
+                      onChange={(e) => handleSettingsChange('address', e.target.value)}
+                      placeholder="Restaurant Address" 
+                      className="rounded-xl" 
+                    />
                   </div>
                   <div>
-                    <label className="text-sm text-muted-foreground">Phone</label>
-                    <Input placeholder="+91 12345 67890" className="rounded-xl" />
+                    <Label className="text-sm text-muted-foreground">Phone</Label>
+                    <Input 
+                      value={settings.phone}
+                      onChange={(e) => handleSettingsChange('phone', e.target.value)}
+                      placeholder="+91 12345 67890" 
+                      className="rounded-xl" 
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Email</Label>
+                    <Input 
+                      value={settings.email}
+                      onChange={(e) => handleSettingsChange('email', e.target.value)}
+                      placeholder="info@restaurant.com" 
+                      className="rounded-xl" 
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -523,12 +652,16 @@ export default function BillingApp() {
                 <h3 className="font-semibold mb-4 text-foreground">Tax Settings</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-foreground">GST Rate</span>
-                    <Select>
+                    <Label className="text-foreground">GST Rate (%)</Label>
+                    <Select
+                      value={settings.taxRate.toString()}
+                      onValueChange={(value) => handleSettingsChange('taxRate', parseFloat(value))}
+                    >
                       <SelectTrigger className="w-24 rounded-xl">
-                        <SelectValue placeholder="18%" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="0">0%</SelectItem>
                         <SelectItem value="5">5%</SelectItem>
                         <SelectItem value="12">12%</SelectItem>
                         <SelectItem value="18">18%</SelectItem>
@@ -539,9 +672,49 @@ export default function BillingApp() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card className="rounded-2xl shadow-md">
+              <CardContent className="p-4">
+                <h3 className="font-semibold mb-4 text-foreground">Print Settings</h3>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Receipts are optimized for 58mm thermal printers
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-xl"
+                    onClick={() => {
+                      // Test print functionality
+                      const testOrder: Order = {
+                        id: "TEST",
+                        items: [{ id: "1", name: "Test Item", price: 10, quantity: 1, image: "", category: "Test" }],
+                        total: 10,
+                        paymentMethod: "cash",
+                        timestamp: new Date(),
+                        status: "Test"
+                      };
+                      setReceiptPreview({ isOpen: true, order: testOrder });
+                    }}
+                  >
+                    <Printer className="mr-2" size={16} />
+                    Test Print Receipt
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>
+      
+      {/* Receipt Preview Dialog */}
+      {receiptPreview.order && (
+        <ReceiptPreview
+          order={receiptPreview.order}
+          settings={settings}
+          isOpen={receiptPreview.isOpen}
+          onClose={() => setReceiptPreview({ isOpen: false, order: null })}
+        />
+      )}
     </div>
   );
 }

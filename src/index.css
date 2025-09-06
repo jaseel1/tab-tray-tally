@@ -118,3 +118,72 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* 58mm Thermal Receipt Styling */
+@media print {
+  .receipt-58mm {
+    width: 58mm !important;
+    max-width: 58mm !important;
+    margin: 0 !important;
+    padding: 2mm !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    color: black !important;
+    background: white !important;
+  }
+  
+  .receipt-58mm * {
+    color: black !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  
+  .receipt-58mm .receipt-header {
+    text-align: center !important;
+    margin-bottom: 2mm !important;
+    font-weight: bold !important;
+  }
+  
+  .receipt-58mm .receipt-item {
+    display: flex !important;
+    justify-content: space-between !important;
+    margin-bottom: 1mm !important;
+    font-size: 10px !important;
+  }
+  
+  .receipt-58mm .receipt-divider {
+    border-top: 1px dashed black !important;
+    margin: 2mm 0 !important;
+  }
+  
+  .receipt-58mm .receipt-total {
+    font-weight: bold !important;
+    font-size: 14px !important;
+    text-align: right !important;
+    margin-top: 2mm !important;
+  }
+  
+  .receipt-58mm .receipt-footer {
+    text-align: center !important;
+    margin-top: 4mm !important;
+    font-size: 10px !important;
+  }
+  
+  /* Hide everything else when printing receipt */
+  body.printing-receipt * {
+    visibility: hidden !important;
+  }
+  
+  body.printing-receipt .receipt-58mm,
+  body.printing-receipt .receipt-58mm * {
+    visibility: visible !important;
+  }
+  
+  body.printing-receipt .receipt-58mm {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+  }
+}
