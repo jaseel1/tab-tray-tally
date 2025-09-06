@@ -14,13 +14,178 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_users: {
+        Row: {
+          created_at: string | null
+          id: string
+          password_hash: string
+          updated_at: string | null
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          password_hash: string
+          updated_at?: string | null
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          password_hash?: string
+          updated_at?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
+      pos_accounts: {
+        Row: {
+          created_at: string | null
+          id: string
+          mobile_number: string
+          pin_hash: string
+          restaurant_name: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          mobile_number: string
+          pin_hash: string
+          restaurant_name: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          mobile_number?: string
+          pin_hash?: string
+          restaurant_name?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      pos_subscriptions: {
+        Row: {
+          created_at: string | null
+          id: string
+          pos_account_id: string | null
+          status: string | null
+          updated_at: string | null
+          valid_from: string | null
+          valid_until: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          pos_account_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          pos_account_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_subscriptions_pos_account_id_fkey"
+            columns: ["pos_account_id"]
+            isOneToOne: false
+            referencedRelation: "pos_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_telemetry: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_active: string | null
+          pos_account_id: string | null
+          total_orders: number | null
+          total_revenue: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_active?: string | null
+          pos_account_id?: string | null
+          total_orders?: number | null
+          total_revenue?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_active?: string | null
+          pos_account_id?: string | null
+          total_orders?: number | null
+          total_revenue?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_telemetry_pos_account_id_fkey"
+            columns: ["pos_account_id"]
+            isOneToOne: false
+            referencedRelation: "pos_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_login: {
+        Args: { p_password: string; p_username: string }
+        Returns: Json
+      }
+      create_pos_account: {
+        Args: {
+          p_license_duration_days?: number
+          p_mobile_number: string
+          p_pin: string
+          p_restaurant_name: string
+        }
+        Returns: Json
+      }
+      get_pos_accounts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          days_remaining: number
+          id: string
+          last_active: string
+          license_status: string
+          license_valid_until: string
+          mobile_number: string
+          restaurant_name: string
+          status: string
+          total_orders: number
+          total_revenue: number
+        }[]
+      }
+      hash_password: {
+        Args: { password: string }
+        Returns: string
+      }
+      pos_login: {
+        Args: { p_mobile_number: string; p_pin: string }
+        Returns: Json
+      }
+      toggle_pos_account_status: {
+        Args: { p_account_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
