@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
-import { FileText, Download } from "lucide-react";
+import { Download, Filter } from "lucide-react";
 import { Order, RestaurantSettings } from "@/lib/pdf";
 import { 
   generateDailySalesPDF,
@@ -187,14 +187,14 @@ const ReportsSection: React.FC<ReportsSectionProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Filter Bar */}
-      <Card className="p-6">
-        <div className="flex flex-col lg:flex-row gap-4 items-end">
-          <div className="flex-1 space-y-2">
-            <Label>Report Type</Label>
+    <div className="space-y-4">
+      {/* Compact Filter Bar */}
+      <Card className="p-4">
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
             <Select value={reportType} onValueChange={(value: ReportType) => setReportType(value)}>
-              <SelectTrigger>
+              <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -202,142 +202,125 @@ const ReportsSection: React.FC<ReportsSectionProps> = ({
                 <SelectItem value="weekly">Weekly</SelectItem>
                 <SelectItem value="monthly">Monthly</SelectItem>
                 <SelectItem value="yearly">Yearly</SelectItem>
-                <SelectItem value="dateRange">Date Range</SelectItem>
+                <SelectItem value="dateRange">Range</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {reportType === 'daily' && (
-            <div className="flex-1 space-y-2">
-              <Label>Date</Label>
-              <Input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-              />
-            </div>
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-40"
+            />
           )}
 
           {reportType === 'weekly' && (
-            <div className="flex-1 space-y-2">
-              <Label>Week Start Date</Label>
-              <Input
-                type="date"
-                value={selectedWeek}
-                onChange={(e) => setSelectedWeek(e.target.value)}
-              />
-            </div>
+            <Input
+              type="date"
+              value={selectedWeek}
+              onChange={(e) => setSelectedWeek(e.target.value)}
+              className="w-40"
+            />
           )}
 
           {reportType === 'monthly' && (
-            <>
-              <div className="flex-1 space-y-2">
-                <Label>Month</Label>
-                <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => (
-                      <SelectItem key={i + 1} value={(i + 1).toString()}>
-                        {new Date(2024, i).toLocaleDateString('en-US', { month: 'long' })}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex-1 space-y-2">
-                <Label>Year</Label>
-                <Input
-                  type="number"
-                  min="2020"
-                  max="2030"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                />
-              </div>
-            </>
-          )}
-
-          {reportType === 'yearly' && (
-            <div className="flex-1 space-y-2">
-              <Label>Year</Label>
+            <div className="flex gap-2">
+              <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
+                <SelectTrigger className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <SelectItem key={i + 1} value={(i + 1).toString()}>
+                      {new Date(2024, i).toLocaleDateString('en-US', { month: 'short' })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Input
                 type="number"
                 min="2020"
                 max="2030"
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                className="w-20"
               />
             </div>
           )}
 
-          {reportType === 'dateRange' && (
-            <>
-              <div className="flex-1 space-y-2">
-                <Label>Start Date</Label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-              <div className="flex-1 space-y-2">
-                <Label>End Date</Label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
-            </>
+          {reportType === 'yearly' && (
+            <Input
+              type="number"
+              min="2020"
+              max="2030"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="w-20"
+            />
           )}
 
-          <Button onClick={handleGeneratePDF} className="flex items-center gap-2">
-            <Download className="h-4 w-4" />
-            Generate PDF
+          {reportType === 'dateRange' && (
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-36"
+              />
+              <span className="text-muted-foreground self-center">to</span>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-36"
+              />
+            </div>
+          )}
+
+          <Button onClick={handleGeneratePDF} size="sm" className="ml-auto">
+            <Download className="h-4 w-4 mr-1" />
+            PDF
           </Button>
         </div>
       </Card>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <div className="text-sm font-medium text-muted-foreground">Total Revenue</div>
-          <div className="text-2xl font-bold">₹{reportData.totals.totalRevenue.toFixed(2)}</div>
+      {/* Compact KPIs */}
+      <div className="grid grid-cols-4 gap-3">
+        <Card className="p-3">
+          <div className="text-xs text-muted-foreground">Revenue</div>
+          <div className="text-lg font-bold">₹{reportData.totals.totalRevenue.toFixed(0)}</div>
         </Card>
-        <Card className="p-4">
-          <div className="text-sm font-medium text-muted-foreground">Orders</div>
-          <div className="text-2xl font-bold">{reportData.totals.totalOrders}</div>
+        <Card className="p-3">
+          <div className="text-xs text-muted-foreground">Orders</div>
+          <div className="text-lg font-bold">{reportData.totals.totalOrders}</div>
         </Card>
-        <Card className="p-4">
-          <div className="text-sm font-medium text-muted-foreground">Cash Sales</div>
-          <div className="text-2xl font-bold">₹{reportData.totals.cashTotal.toFixed(2)}</div>
+        <Card className="p-3">
+          <div className="text-xs text-muted-foreground">Cash</div>
+          <div className="text-lg font-bold text-green-600">₹{reportData.totals.cashTotal.toFixed(0)}</div>
         </Card>
-        <Card className="p-4">
-          <div className="text-sm font-medium text-muted-foreground">UPI Sales</div>
-          <div className="text-2xl font-bold">₹{reportData.totals.upiTotal.toFixed(2)}</div>
+        <Card className="p-3">
+          <div className="text-xs text-muted-foreground">UPI</div>
+          <div className="text-lg font-bold text-blue-600">₹{reportData.totals.upiTotal.toFixed(0)}</div>
         </Card>
       </div>
 
-      {/* Charts and Data */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Payment Method Chart */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Payment Method Breakdown</h3>
-          <div className="h-64">
+      {/* Charts and Table */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Payment Chart */}
+        <Card className="p-4">
+          <h3 className="text-sm font-medium mb-3">Payment Split</h3>
+          <div className="h-48">
             <ChartContainer config={chartConfig}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <ChartTooltip 
-                    cursor={false}
-                    content={<ChartTooltipContent hideLabel />}
-                  />
+                  <ChartTooltip content={<ChartTooltipContent hideLabel />} />
                   <Pie 
                     data={reportData.paymentMethodData} 
                     dataKey="value" 
                     nameKey="method"
-                    innerRadius={60}
+                    innerRadius={50}
                     fill="var(--color-cash)"
                   />
                 </PieChart>
@@ -346,61 +329,64 @@ const ReportsSection: React.FC<ReportsSectionProps> = ({
           </div>
         </Card>
 
-        {/* Daily Breakdown Chart (for non-daily reports) */}
-        {reportType !== 'daily' && reportData.dailyBreakdown.length > 0 && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Daily Breakdown</h3>
-            <div className="h-64">
-              <ChartContainer config={chartConfig}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={reportData.dailyBreakdown}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="cash" stackId="payment" fill="var(--color-cash)" />
-                    <Bar dataKey="upi" stackId="payment" fill="var(--color-upi)" />
-                    <Bar dataKey="card" stackId="payment" fill="var(--color-card)" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+        {/* Daily Breakdown Table */}
+        <Card className="p-4 lg:col-span-2">
+          <h3 className="text-sm font-medium mb-3">
+            {reportType === 'daily' ? 'Daily Summary' : 'Daily Breakdown'}
+          </h3>
+          {reportType === 'daily' ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>Total Orders:</span>
+                <span className="font-medium">{reportData.totals.totalOrders}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Cash Sales:</span>
+                <span className="font-medium text-green-600">₹{reportData.totals.cashTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>UPI Sales:</span>
+                <span className="font-medium text-blue-600">₹{reportData.totals.upiTotal.toFixed(2)}</span>
+              </div>
+              {reportData.totals.cardTotal > 0 && (
+                <div className="flex justify-between">
+                  <span>Card Sales:</span>
+                  <span className="font-medium text-purple-600">₹{reportData.totals.cardTotal.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-2 border-t">
+                <span className="font-medium">Total Revenue:</span>
+                <span className="font-bold">₹{reportData.totals.totalRevenue.toFixed(2)}</span>
+              </div>
             </div>
-          </Card>
-        )}
-      </div>
-
-      {/* Data Table */}
-      {reportType !== 'daily' && reportData.dailyBreakdown.length > 0 && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Daily Sales Breakdown</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">Date</th>
-                  <th className="text-right py-2">Orders</th>
-                  <th className="text-right py-2">Cash</th>
-                  <th className="text-right py-2">UPI</th>
-                  <th className="text-right py-2">Card</th>
-                  <th className="text-right py-2">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportData.dailyBreakdown.map((day, index) => (
-                  <tr key={index} className="border-b border-border/50">
-                    <td className="py-2">{day.date}</td>
-                    <td className="text-right py-2">{day.orders}</td>
-                    <td className="text-right py-2">₹{day.cash.toFixed(2)}</td>
-                    <td className="text-right py-2">₹{day.upi.toFixed(2)}</td>
-                    <td className="text-right py-2">₹{day.card.toFixed(2)}</td>
-                    <td className="text-right py-2 font-medium">₹{day.total.toFixed(2)}</td>
+          ) : (
+            <div className="overflow-auto max-h-48">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-background">
+                  <tr className="border-b text-left">
+                    <th className="py-2">Date</th>
+                    <th className="py-2 text-right">Orders</th>
+                    <th className="py-2 text-right">Cash</th>
+                    <th className="py-2 text-right">UPI</th>
+                    <th className="py-2 text-right">Total</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {reportData.dailyBreakdown.map((day, index) => (
+                    <tr key={index} className="border-b border-border/30 hover:bg-muted/30">
+                      <td className="py-1.5">{day.date}</td>
+                      <td className="py-1.5 text-right">{day.orders}</td>
+                      <td className="py-1.5 text-right text-green-600">₹{day.cash.toFixed(0)}</td>
+                      <td className="py-1.5 text-right text-blue-600">₹{day.upi.toFixed(0)}</td>
+                      <td className="py-1.5 text-right font-medium">₹{day.total.toFixed(0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
-      )}
+      </div>
     </div>
   );
 };
