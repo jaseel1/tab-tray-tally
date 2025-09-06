@@ -92,13 +92,16 @@ export default function BillingApp() {
   const [privacyMode, setPrivacyMode] = useState(false);
   const { toast } = useToast();
 
-  // Load data from localStorage on component mount
+  // Load account-specific data from localStorage when account changes
   useEffect(() => {
-    const savedOrders = localStorage.getItem('pos-orders');
-    const savedMenuItems = localStorage.getItem('pos-menu-items');
-    const savedSettings = localStorage.getItem('pos-settings');
-    const savedCategories = localStorage.getItem('pos-categories');
-    const savedPrivacyMode = localStorage.getItem('pos-privacy');
+    if (!posAccountData?.account_id) return;
+    
+    const accountId = posAccountData.account_id;
+    const savedOrders = localStorage.getItem(`pos-orders-${accountId}`);
+    const savedMenuItems = localStorage.getItem(`pos-menu-items-${accountId}`);
+    const savedSettings = localStorage.getItem(`pos-settings-${accountId}`);
+    const savedCategories = localStorage.getItem(`pos-categories-${accountId}`);
+    const savedPrivacyMode = localStorage.getItem(`pos-privacy-${accountId}`);
     
     if (savedOrders) {
       try {
@@ -110,7 +113,10 @@ export default function BillingApp() {
         setOrders(ordersWithDates);
       } catch (error) {
         console.error('Error loading orders:', error);
+        setOrders([]);
       }
+    } else {
+      setOrders([]);
     }
     
     if (savedMenuItems) {
@@ -118,15 +124,34 @@ export default function BillingApp() {
         setMenuItems(JSON.parse(savedMenuItems));
       } catch (error) {
         console.error('Error loading menu items:', error);
+        setMenuItems([]);
       }
+    } else {
+      setMenuItems([]);
     }
     
     if (savedSettings) {
       try {
-        setSettings(JSON.parse(savedSettings));
+        const loadedSettings = JSON.parse(savedSettings);
+        setSettings(loadedSettings);
       } catch (error) {
         console.error('Error loading settings:', error);
+        setSettings({
+          name: posAccountData.restaurant_name,
+          address: "",
+          phone: "",
+          email: "",
+          taxRate: 18
+        });
       }
+    } else {
+      setSettings({
+        name: posAccountData.restaurant_name,
+        address: "",
+        phone: "",
+        email: "",
+        taxRate: 18
+      });
     }
 
     if (savedCategories) {
@@ -134,7 +159,10 @@ export default function BillingApp() {
         setCategories(JSON.parse(savedCategories));
       } catch (error) {
         console.error('Error loading categories:', error);
+        setCategories(['General']);
       }
+    } else {
+      setCategories(['General']);
     }
 
     if (savedPrivacyMode) {
@@ -142,30 +170,43 @@ export default function BillingApp() {
         setPrivacyMode(JSON.parse(savedPrivacyMode));
       } catch (error) {
         console.error('Error loading privacy mode:', error);
+        setPrivacyMode(false);
       }
+    } else {
+      setPrivacyMode(false);
     }
-  }, []);
+  }, [posAccountData]);
 
-  // Save to localStorage whenever data changes
+  // Save account-specific data to localStorage whenever data changes
   useEffect(() => {
-    localStorage.setItem('pos-orders', JSON.stringify(orders));
-  }, [orders]);
-
-  useEffect(() => {
-    localStorage.setItem('pos-menu-items', JSON.stringify(menuItems));
-  }, [menuItems]);
+    if (posAccountData?.account_id) {
+      localStorage.setItem(`pos-orders-${posAccountData.account_id}`, JSON.stringify(orders));
+    }
+  }, [orders, posAccountData]);
 
   useEffect(() => {
-    localStorage.setItem('pos-settings', JSON.stringify(settings));
-  }, [settings]);
+    if (posAccountData?.account_id) {
+      localStorage.setItem(`pos-menu-items-${posAccountData.account_id}`, JSON.stringify(menuItems));
+    }
+  }, [menuItems, posAccountData]);
 
   useEffect(() => {
-    localStorage.setItem('pos-categories', JSON.stringify(categories));
-  }, [categories]);
+    if (posAccountData?.account_id) {
+      localStorage.setItem(`pos-settings-${posAccountData.account_id}`, JSON.stringify(settings));
+    }
+  }, [settings, posAccountData]);
 
   useEffect(() => {
-    localStorage.setItem('pos-privacy', JSON.stringify(privacyMode));
-  }, [privacyMode]);
+    if (posAccountData?.account_id) {
+      localStorage.setItem(`pos-categories-${posAccountData.account_id}`, JSON.stringify(categories));
+    }
+  }, [categories, posAccountData]);
+
+  useEffect(() => {
+    if (posAccountData?.account_id) {
+      localStorage.setItem(`pos-privacy-${posAccountData.account_id}`, JSON.stringify(privacyMode));
+    }
+  }, [privacyMode, posAccountData]);
 
   const addToCart = (item: MenuItem) => {
     setCart(prevCart => {
@@ -207,7 +248,7 @@ export default function BillingApp() {
     return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
-  const processOrder = (paymentMethod: string) => {
+  const processOrder = async (paymentMethod: string) => {
     if (cart.length === 0) {
       toast({
         title: "Cart is empty",
@@ -228,6 +269,19 @@ export default function BillingApp() {
 
     setOrders(prevOrders => [newOrder, ...prevOrders]);
     setCart([]);
+    
+    // Update telemetry in Supabase
+    if (posAccountData?.account_id) {
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        await supabase.rpc('update_pos_telemetry', {
+          p_account_id: posAccountData.account_id,
+          p_order_total: newOrder.total
+        });
+      } catch (error) {
+        console.error('Error updating telemetry:', error);
+      }
+    }
     
     setReceiptPreview({ isOpen: true, order: newOrder });
     
@@ -298,10 +352,18 @@ export default function BillingApp() {
   const handlePOSLogin = (accountData: any) => {
     setIsLoggedIn(true);
     setPosAccountData(accountData);
-    setSettings(prev => ({
-      ...prev,
-      name: accountData.restaurant_name
-    }));
+    // Clear existing data first
+    setOrders([]);
+    setMenuItems([]);
+    setCategories(['General']);
+    setPrivacyMode(false);
+    setSettings({
+      name: accountData.restaurant_name,
+      address: "",
+      phone: "",
+      email: "",
+      taxRate: 18
+    });
   };
 
   const handleAdminLogin = () => {
@@ -314,6 +376,13 @@ export default function BillingApp() {
     setIsAdmin(false);
     setPosAccountData(null);
     setShowAdminLogin(false);
+    // Clear all state data
+    setOrders([]);
+    setMenuItems([]);
+    setCategories(['General']);
+    setPrivacyMode(false);
+    setSettings(defaultSettings);
+    setCart([]);
   };
 
   const getDaysRemaining = () => {
