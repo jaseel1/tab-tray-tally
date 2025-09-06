@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { 
   Home, 
@@ -27,6 +28,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { MenuManager, MenuItem } from "@/components/MenuManager";
 import { ReceiptPreview } from "@/components/ReceiptPreview";
+import ReportsSection from "@/components/ReportsSection";
 import { generateDailySalesPDF, generateMonthlySalesPDF, RestaurantSettings } from "@/lib/pdf";
 
 import burgerImage from "@/assets/burger.jpg";
@@ -73,6 +75,8 @@ export default function BillingApp() {
     isOpen: false,
     order: null
   });
+  const [categories, setCategories] = useState<string[]>(['Appetizers', 'Main Course', 'Desserts', 'Beverages', 'Mains']);
+  const [privacyMode, setPrivacyMode] = useState(false);
   const { toast } = useToast();
 
   // Load data from localStorage on component mount
@@ -80,11 +84,12 @@ export default function BillingApp() {
     const savedOrders = localStorage.getItem('pos-orders');
     const savedMenuItems = localStorage.getItem('pos-menu-items');
     const savedSettings = localStorage.getItem('pos-settings');
+    const savedCategories = localStorage.getItem('pos-categories');
+    const savedPrivacyMode = localStorage.getItem('pos-privacy');
     
     if (savedOrders) {
       try {
         const parsed = JSON.parse(savedOrders);
-        // Convert timestamp strings back to Date objects
         const ordersWithDates = parsed.map((order: any) => ({
           ...order,
           timestamp: new Date(order.timestamp)
@@ -110,6 +115,22 @@ export default function BillingApp() {
         console.error('Error loading settings:', error);
       }
     }
+
+    if (savedCategories) {
+      try {
+        setCategories(JSON.parse(savedCategories));
+      } catch (error) {
+        console.error('Error loading categories:', error);
+      }
+    }
+
+    if (savedPrivacyMode) {
+      try {
+        setPrivacyMode(JSON.parse(savedPrivacyMode));
+      } catch (error) {
+        console.error('Error loading privacy mode:', error);
+      }
+    }
   }, []);
 
   // Save to localStorage whenever data changes
@@ -124,6 +145,14 @@ export default function BillingApp() {
   useEffect(() => {
     localStorage.setItem('pos-settings', JSON.stringify(settings));
   }, [settings]);
+
+  useEffect(() => {
+    localStorage.setItem('pos-categories', JSON.stringify(categories));
+  }, [categories]);
+
+  useEffect(() => {
+    localStorage.setItem('pos-privacy', JSON.stringify(privacyMode));
+  }, [privacyMode]);
 
   const addToCart = (item: MenuItem) => {
     setCart(prevCart => {
@@ -187,7 +216,6 @@ export default function BillingApp() {
     setOrders(prevOrders => [newOrder, ...prevOrders]);
     setCart([]);
     
-    // Show receipt preview
     setReceiptPreview({ isOpen: true, order: newOrder });
     
     toast({
@@ -200,10 +228,14 @@ export default function BillingApp() {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
 
-  const generateDailyReport = () => {
-    const today = new Date();
-    const pdf = generateDailySalesPDF(orders, today, settings);
-    pdf.save(`daily-report-${today.toISOString().split('T')[0]}.pdf`);
+  const handleCategoriesChange = (newCategories: string[]) => {
+    setCategories(newCategories);
+  };
+
+  const generateDailyReport = (date?: Date) => {
+    const targetDate = date || new Date();
+    const pdf = generateDailySalesPDF(orders, targetDate, settings);
+    pdf.save(`daily-report-${targetDate.toISOString().split('T')[0]}.pdf`);
     
     toast({
       title: "Report Generated",
@@ -211,10 +243,12 @@ export default function BillingApp() {
     });
   };
 
-  const generateMonthlyReport = () => {
+  const generateMonthlyReport = (month?: number, year?: number) => {
     const now = new Date();
-    const pdf = generateMonthlySalesPDF(orders, now.getMonth(), now.getFullYear(), settings);
-    pdf.save(`monthly-report-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.pdf`);
+    const targetMonth = month ?? now.getMonth();
+    const targetYear = year ?? now.getFullYear();
+    const pdf = generateMonthlySalesPDF(orders, targetMonth, targetYear, settings);
+    pdf.save(`monthly-report-${targetYear}-${String(targetMonth + 1).padStart(2, '0')}.pdf`);
     
     toast({
       title: "Report Generated", 
@@ -222,26 +256,30 @@ export default function BillingApp() {
     });
   };
 
+  const today = new Date();
+  const todayOrders = orders.filter(order => {
+    const orderDate = new Date(order.timestamp);
+    return orderDate.toDateString() === today.toDateString();
+  });
+
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay());
+  const weekOrders = orders.filter(order => {
+    const orderDate = new Date(order.timestamp);
+    return orderDate >= weekStart && orderDate <= today;
+  });
+  const weekRevenue = weekOrders.reduce((sum, order) => sum + order.total, 0);
+
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const monthOrders = orders.filter(order => {
+    const orderDate = new Date(order.timestamp);
+    return orderDate >= monthStart && orderDate <= today;
+  });
+  const monthRevenue = monthOrders.reduce((sum, order) => sum + order.total, 0);
+
   const filteredItems = menuItems.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Sales data for charts
-  const salesByPayment = [
-    { name: "Cash", value: orders.filter(o => o.paymentMethod === "cash").length, fill: "hsl(var(--primary))" },
-    { name: "UPI", value: orders.filter(o => o.paymentMethod === "upi").length, fill: "hsl(var(--success))" },
-    { name: "Card", value: orders.filter(o => o.paymentMethod === "card").length, fill: "hsl(var(--info))" },
-  ];
-
-  const dailySales = [
-    { day: "Mon", sales: 1200 },
-    { day: "Tue", sales: 800 },
-    { day: "Wed", sales: 1500 },
-    { day: "Thu", sales: 900 },
-    { day: "Fri", sales: 2100 },
-    { day: "Sat", sales: 1800 },
-    { day: "Sun", sales: 1400 },
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-surface p-4 max-w-md mx-auto">
@@ -276,9 +314,18 @@ export default function BillingApp() {
         {/* Home Dashboard */}
         <TabsContent value="home">
           <div className="space-y-4">
-            <div className="text-center mb-6">
-              <h1 className="text-2xl font-bold text-foreground mb-2">Restaurant POS</h1>
-              <p className="text-muted-foreground">Manage your restaurant operations</p>
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground mb-2">Restaurant POS</h1>
+                <p className="text-muted-foreground">Manage your restaurant operations</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium">Privacy</span>
+                <Switch
+                  checked={privacyMode}
+                  onCheckedChange={setPrivacyMode}
+                />
+              </div>
             </div>
             
             <div className="grid gap-4">
@@ -316,14 +363,34 @@ export default function BillingApp() {
                 <Card className="bg-card shadow-md rounded-2xl">
                   <CardContent className="p-4 text-center">
                     <p className="text-sm text-muted-foreground">Today's Orders</p>
-                    <p className="text-2xl font-bold text-foreground">{orders.length}</p>
+                    <p className="text-2xl font-bold text-foreground">{todayOrders.length}</p>
                   </CardContent>
                 </Card>
                 
                 <Card className="bg-card shadow-md rounded-2xl">
                   <CardContent className="p-4 text-center">
-                    <p className="text-sm text-muted-foreground">Revenue</p>
-                    <p className="text-2xl font-bold text-foreground">₹{orders.reduce((sum, order) => sum + order.total, 0)}</p>
+                    <p className="text-sm text-muted-foreground">Total Revenue</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {privacyMode ? "****" : `₹${orders.reduce((sum, order) => sum + order.total, 0)}`}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-card shadow-md rounded-2xl">
+                  <CardContent className="p-4 text-center">
+                    <p className="text-sm text-muted-foreground">Weekly Sales</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {privacyMode ? "****" : `₹${weekRevenue.toFixed(2)}`}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-card shadow-md rounded-2xl">
+                  <CardContent className="p-4 text-center">
+                    <p className="text-sm text-muted-foreground">Monthly Sales</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {privacyMode ? "****" : `₹${monthRevenue.toFixed(2)}`}
+                    </p>
                   </CardContent>
                 </Card>
               </div>
@@ -450,94 +517,22 @@ export default function BillingApp() {
 
         {/* Reports Screen */}
         <TabsContent value="reports">
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold text-foreground mb-4">Sales Reports</h2>
-            
-            <Card className="rounded-2xl shadow-md">
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-3 text-foreground">Payment Methods</h3>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={salesByPayment}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={60}
-                        dataKey="value"
-                      >
-                        {salesByPayment.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="rounded-2xl shadow-md">
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-3 text-foreground">Daily Sales</h3>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dailySales}>
-                      <XAxis dataKey="day" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="sales" fill="hsl(var(--primary))" radius={4} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Card className="rounded-2xl shadow-md">
-                <CardContent className="p-4 text-center">
-                  <p className="text-sm text-muted-foreground">Total Orders</p>
-                  <p className="text-2xl font-bold text-foreground">{orders.length}</p>
-                </CardContent>
-              </Card>
-              <Card className="rounded-2xl shadow-md">
-                <CardContent className="p-4 text-center">
-                  <p className="text-sm text-muted-foreground">Avg Order Value</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    ₹{orders.length > 0 ? Math.round(orders.reduce((sum, order) => sum + order.total, 0) / orders.length) : 0}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-            
-            {/* PDF Report Generation */}
-            <Card className="rounded-2xl shadow-md">
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-4 text-foreground">Generate Reports</h3>
-                <div className="space-y-3">
-                  <Button
-                    onClick={generateDailyReport}
-                    className="w-full bg-primary hover:bg-primary/90"
-                  >
-                    <Calendar className="mr-2" size={16} />
-                    Download Daily Report (PDF)
-                  </Button>
-                  <Button
-                    onClick={generateMonthlyReport}
-                    className="w-full bg-secondary hover:bg-secondary/80"
-                  >
-                    <FileText className="mr-2" size={16} />
-                    Download Monthly Report (PDF)
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <ReportsSection 
+            orders={orders} 
+            settings={settings} 
+            generateDailyReport={generateDailyReport}
+            generateMonthlyReport={generateMonthlyReport}
+          />
         </TabsContent>
 
         {/* Menu Management */}
         <TabsContent value="menu">
-          <MenuManager items={menuItems} onItemsChange={setMenuItems} />
+          <MenuManager 
+            items={menuItems} 
+            onItemsChange={setMenuItems}
+            categories={categories}
+            onCategoriesChange={handleCategoriesChange}
+          />
         </TabsContent>
 
         {/* Orders History */}
@@ -705,9 +700,8 @@ export default function BillingApp() {
           </div>
         </TabsContent>
       </Tabs>
-      
-      {/* Receipt Preview Dialog */}
-      {receiptPreview.order && (
+
+      {receiptPreview.isOpen && receiptPreview.order && (
         <ReceiptPreview
           order={receiptPreview.order}
           settings={settings}

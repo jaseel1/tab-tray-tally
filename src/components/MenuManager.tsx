@@ -19,9 +19,11 @@ export interface MenuItem {
 interface MenuManagerProps {
   items: MenuItem[];
   onItemsChange: (items: MenuItem[]) => void;
+  categories: string[];
+  onCategoriesChange: (categories: string[]) => void;
 }
 
-export function MenuManager({ items, onItemsChange }: MenuManagerProps) {
+export function MenuManager({ items, onItemsChange, categories, onCategoriesChange }: MenuManagerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [formData, setFormData] = useState({
@@ -32,10 +34,10 @@ export function MenuManager({ items, onItemsChange }: MenuManagerProps) {
   });
   const { toast } = useToast();
 
-  const categories = ['Mains', 'Beverages', 'Appetizers', 'Desserts', 'Sides'];
+  // Categories are now passed as props
 
   const resetForm = () => {
-    setFormData({ name: '', price: '', category: '', image: '' });
+    setFormData({ name: '', price: '', category: categories[0] || '', image: '' });
     setEditingItem(null);
   };
 

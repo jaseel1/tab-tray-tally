@@ -271,3 +271,270 @@ export const generateMonthlySalesPDF = (
   
   return pdf;
 };
+
+// Generate weekly sales report PDF
+export const generateWeeklySalesPDF = (
+  orders: Order[],
+  weekStartDate: Date,
+  settings: RestaurantSettings
+) => {
+  const pdf = new jsPDF();
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  
+  // Calculate week end date
+  const weekEndDate = new Date(weekStartDate);
+  weekEndDate.setDate(weekStartDate.getDate() + 6);
+  
+  // Filter orders for the specific week
+  const weekOrders = orders.filter(order => {
+    const orderDate = new Date(order.timestamp);
+    return orderDate >= weekStartDate && orderDate <= weekEndDate;
+  });
+  
+  // Header
+  pdf.setFontSize(20);
+  pdf.text(settings.name, pageWidth / 2, 20, { align: 'center' });
+  
+  pdf.setFontSize(14);
+  pdf.text('Weekly Sales Report', pageWidth / 2, 30, { align: 'center' });
+  
+  pdf.setFontSize(12);
+  pdf.text(`${weekStartDate.toDateString()} - ${weekEndDate.toDateString()}`, pageWidth / 2, 40, { align: 'center' });
+  
+  // Summary stats
+  const totalRevenue = weekOrders.reduce((sum, order) => sum + order.total, 0);
+  const totalOrders = weekOrders.length;
+  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+  
+  pdf.setFontSize(11);
+  pdf.text(`Total Orders: ${totalOrders}`, 20, 60);
+  pdf.text(`Total Revenue: ₹${totalRevenue.toFixed(2)}`, 20, 70);
+  pdf.text(`Average Order Value: ₹${avgOrderValue.toFixed(2)}`, 20, 80);
+  
+  // Daily breakdown for the week
+  const dailyData = [];
+  for (let i = 0; i < 7; i++) {
+    const currentDay = new Date(weekStartDate);
+    currentDay.setDate(weekStartDate.getDate() + i);
+    
+    const dayOrders = weekOrders.filter(order => {
+      const orderDate = new Date(order.timestamp);
+      return orderDate.toDateString() === currentDay.toDateString();
+    });
+    
+    const dayRevenue = dayOrders.reduce((sum, order) => sum + order.total, 0);
+    
+    dailyData.push([
+      currentDay.toDateString(),
+      dayOrders.length.toString(),
+      `₹${dayRevenue.toFixed(2)}`
+    ]);
+  }
+  
+  if (dailyData.length > 0) {
+    (pdf as any).autoTable({
+      head: [['Date', 'Orders', 'Revenue']],
+      body: dailyData,
+      startY: 100,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [41, 128, 185] }
+    });
+  }
+  
+  return pdf;
+};
+
+// Generate yearly sales report PDF
+export const generateYearlySalesPDF = (
+  orders: Order[],
+  year: number,
+  settings: RestaurantSettings
+) => {
+  const pdf = new jsPDF();
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  
+  // Filter orders for the specific year
+  const yearOrders = orders.filter(order => {
+    const orderDate = new Date(order.timestamp);
+    return orderDate.getFullYear() === year;
+  });
+  
+  // Header
+  pdf.setFontSize(20);
+  pdf.text(settings.name, pageWidth / 2, 20, { align: 'center' });
+  
+  pdf.setFontSize(14);
+  pdf.text('Yearly Sales Report', pageWidth / 2, 30, { align: 'center' });
+  
+  pdf.setFontSize(12);
+  pdf.text(`Year ${year}`, pageWidth / 2, 40, { align: 'center' });
+  
+  // Summary stats
+  const totalRevenue = yearOrders.reduce((sum, order) => sum + order.total, 0);
+  const totalOrders = yearOrders.length;
+  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+  
+  pdf.setFontSize(11);
+  pdf.text(`Total Orders: ${totalOrders}`, 20, 60);
+  pdf.text(`Total Revenue: ₹${totalRevenue.toFixed(2)}`, 20, 70);
+  pdf.text(`Average Order Value: ₹${avgOrderValue.toFixed(2)}`, 20, 80);
+  
+  // Monthly breakdown
+  const monthlyData = [];
+  for (let month = 0; month < 12; month++) {
+    const monthOrders = yearOrders.filter(order => {
+      const orderDate = new Date(order.timestamp);
+      return orderDate.getMonth() === month;
+    });
+    
+    const monthRevenue = monthOrders.reduce((sum, order) => sum + order.total, 0);
+    const monthName = new Date(year, month).toLocaleString('default', { month: 'long' });
+    
+    monthlyData.push([
+      monthName,
+      monthOrders.length.toString(),
+      `₹${monthRevenue.toFixed(2)}`
+    ]);
+  }
+  
+  (pdf as any).autoTable({
+    head: [['Month', 'Orders', 'Revenue']],
+    body: monthlyData,
+    startY: 100,
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [41, 128, 185] }
+  });
+  
+  return pdf;
+};
+
+// Generate payment method report PDF
+export const generatePaymentMethodPDF = (
+  orders: Order[],
+  startDate: Date,
+  endDate: Date,
+  settings: RestaurantSettings
+) => {
+  const pdf = new jsPDF();
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  
+  // Filter orders for the date range
+  const filteredOrders = orders.filter(order => {
+    const orderDate = new Date(order.timestamp);
+    return orderDate >= startDate && orderDate <= endDate;
+  });
+  
+  // Header
+  pdf.setFontSize(20);
+  pdf.text(settings.name, pageWidth / 2, 20, { align: 'center' });
+  
+  pdf.setFontSize(14);
+  pdf.text('Payment Method Report', pageWidth / 2, 30, { align: 'center' });
+  
+  pdf.setFontSize(12);
+  pdf.text(`${startDate.toDateString()} - ${endDate.toDateString()}`, pageWidth / 2, 40, { align: 'center' });
+  
+  // Payment method breakdown
+  const paymentBreakdown = filteredOrders.reduce((acc, order) => {
+    const method = order.paymentMethod.toUpperCase();
+    if (!acc[method]) {
+      acc[method] = { orders: 0, revenue: 0 };
+    }
+    acc[method].orders += 1;
+    acc[method].revenue += order.total;
+    return acc;
+  }, {} as Record<string, { orders: number; revenue: number }>);
+  
+  // Summary
+  const totalOrders = filteredOrders.length;
+  const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.total, 0);
+  
+  pdf.setFontSize(11);
+  pdf.text(`Total Orders: ${totalOrders}`, 20, 60);
+  pdf.text(`Total Revenue: ₹${totalRevenue.toFixed(2)}`, 20, 70);
+  
+  // Payment method table
+  const tableData = Object.entries(paymentBreakdown).map(([method, data]) => [
+    method,
+    data.orders.toString(),
+    `₹${data.revenue.toFixed(2)}`,
+    `${((data.revenue / totalRevenue) * 100).toFixed(1)}%`
+  ]);
+  
+  (pdf as any).autoTable({
+    head: [['Payment Method', 'Orders', 'Revenue', 'Percentage']],
+    body: tableData,
+    startY: 90,
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [41, 128, 185] }
+  });
+  
+  return pdf;
+};
+
+// Generate item-wise report PDF
+export const generateItemWisePDF = (
+  orders: Order[],
+  startDate: Date,
+  endDate: Date,
+  settings: RestaurantSettings
+) => {
+  const pdf = new jsPDF();
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  
+  // Filter orders for the date range
+  const filteredOrders = orders.filter(order => {
+    const orderDate = new Date(order.timestamp);
+    return orderDate >= startDate && orderDate <= endDate;
+  });
+  
+  // Header
+  pdf.setFontSize(20);
+  pdf.text(settings.name, pageWidth / 2, 20, { align: 'center' });
+  
+  pdf.setFontSize(14);
+  pdf.text('Item-wise Sales Report', pageWidth / 2, 30, { align: 'center' });
+  
+  pdf.setFontSize(12);
+  pdf.text(`${startDate.toDateString()} - ${endDate.toDateString()}`, pageWidth / 2, 40, { align: 'center' });
+  
+  // Item breakdown
+  const itemBreakdown = filteredOrders.reduce((acc, order) => {
+    order.items.forEach(item => {
+      if (!acc[item.name]) {
+        acc[item.name] = { quantity: 0, revenue: 0 };
+      }
+      acc[item.name].quantity += item.quantity;
+      acc[item.name].revenue += item.quantity * item.price;
+    });
+    return acc;
+  }, {} as Record<string, { quantity: number; revenue: number }>);
+  
+  // Summary
+  const totalItems = Object.values(itemBreakdown).reduce((sum, item) => sum + item.quantity, 0);
+  const totalRevenue = Object.values(itemBreakdown).reduce((sum, item) => sum + item.revenue, 0);
+  
+  pdf.setFontSize(11);
+  pdf.text(`Total Items Sold: ${totalItems}`, 20, 60);
+  pdf.text(`Total Revenue: ₹${totalRevenue.toFixed(2)}`, 20, 70);
+  
+  // Item table
+  const tableData = Object.entries(itemBreakdown)
+    .sort(([,a], [,b]) => b.revenue - a.revenue)
+    .map(([itemName, data]) => [
+      itemName,
+      data.quantity.toString(),
+      `₹${data.revenue.toFixed(2)}`,
+      `${((data.revenue / totalRevenue) * 100).toFixed(1)}%`
+    ]);
+  
+  (pdf as any).autoTable({
+    head: [['Item Name', 'Quantity Sold', 'Revenue', 'Percentage']],
+    body: tableData,
+    startY: 90,
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [41, 128, 185] }
+  });
+  
+  return pdf;
+};
