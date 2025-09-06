@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -23,13 +24,18 @@ import {
   Printer,
   Download,
   Calendar,
-  FileText
+  FileText,
+  Shield,
+  LogOut
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { MenuManager, MenuItem } from "@/components/MenuManager";
 import { ReceiptPreview } from "@/components/ReceiptPreview";
 import ReportsSection from "@/components/ReportsSection";
 import { generateDailySalesPDF, generateMonthlySalesPDF, RestaurantSettings } from "@/lib/pdf";
+import POSLoginScreen from "@/components/POSLoginScreen";
+import AdminLoginScreen from "@/components/AdminLoginScreen";
+import SuperAdminDashboard from "@/components/SuperAdminDashboard";
 
 import burgerImage from "@/assets/burger.jpg";
 import pizzaImage from "@/assets/pizza.jpg";
@@ -65,6 +71,13 @@ const defaultSettings: RestaurantSettings = {
 };
 
 export default function BillingApp() {
+  // Authentication states
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [posAccountData, setPosAccountData] = useState<any>(null);
+  
+  // Existing states
   const [activeTab, setActiveTab] = useState("home");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -280,6 +293,69 @@ export default function BillingApp() {
   const filteredItems = menuItems.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Authentication handlers
+  const handlePOSLogin = (accountData: any) => {
+    setIsLoggedIn(true);
+    setPosAccountData(accountData);
+    setSettings(prev => ({
+      ...prev,
+      name: accountData.restaurant_name
+    }));
+  };
+
+  const handleAdminLogin = () => {
+    setIsAdmin(true);
+    setShowAdminLogin(false);
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setIsAdmin(false);
+    setPosAccountData(null);
+    setShowAdminLogin(false);
+  };
+
+  const getDaysRemaining = () => {
+    if (!posAccountData?.license_valid_until) return 0;
+    const validUntil = new Date(posAccountData.license_valid_until);
+    const today = new Date();
+    const diffTime = validUntil.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  // Show admin dashboard if admin is logged in
+  if (isAdmin) {
+    return <SuperAdminDashboard onLogout={handleLogout} />;
+  }
+
+  // Show admin login screen
+  if (showAdminLogin) {
+    return (
+      <AdminLoginScreen 
+        onLoginSuccess={handleAdminLogin}
+        onBackToPOS={() => setShowAdminLogin(false)}
+      />
+    );
+  }
+
+  // Show POS login screen if not logged in
+  if (!isLoggedIn) {
+    return (
+      <div className="relative">
+        <POSLoginScreen onLoginSuccess={handlePOSLogin} />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowAdminLogin(true)}
+          className="absolute top-4 right-4 text-xs"
+        >
+          <Shield className="mr-1 h-3 w-3" />
+          Admin
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-surface p-4 max-w-md mx-auto">
@@ -596,7 +672,13 @@ export default function BillingApp() {
         {/* Settings */}
         <TabsContent value="settings">
           <div className="space-y-4">
-            <h2 className="text-xl font-bold text-foreground mb-4">Settings</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-foreground">Settings</h2>
+              <Button variant="outline" size="sm" onClick={handleLogout} className="rounded-xl">
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            </div>
             
             <Card className="rounded-2xl shadow-md">
               <CardContent className="p-4">
@@ -637,6 +719,42 @@ export default function BillingApp() {
                       placeholder="info@restaurant.com" 
                       className="rounded-xl" 
                     />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* License Information */}
+            <Card className="rounded-2xl shadow-md">
+              <CardContent className="p-4">
+                <h3 className="font-semibold mb-4 text-foreground flex items-center">
+                  <Shield className="mr-2 h-5 w-5" />
+                  License Information
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Account</Label>
+                    <div className="p-3 bg-muted rounded-xl">
+                      <p className="font-medium">{posAccountData?.restaurant_name}</p>
+                      <p className="text-sm text-muted-foreground">Mobile: {posAccountData?.mobile_number}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">License Status</Label>
+                    <div className="p-3 bg-muted rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span>Valid Until</span>
+                        <span className="font-medium">
+                          {new Date(posAccountData?.license_valid_until).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Expires in</span>
+                        <Badge variant={getDaysRemaining() > 30 ? "default" : getDaysRemaining() > 7 ? "secondary" : "destructive"}>
+                          {getDaysRemaining()} days
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
