@@ -248,7 +248,7 @@ export default function BillingApp() {
     return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
-  const processOrder = async (paymentMethod: string) => {
+  const processOrder = (paymentMethod: string) => {
     if (cart.length === 0) {
       toast({
         title: "Cart is empty",
@@ -269,19 +269,6 @@ export default function BillingApp() {
 
     setOrders(prevOrders => [newOrder, ...prevOrders]);
     setCart([]);
-    
-    // Update telemetry in Supabase
-    if (posAccountData?.account_id) {
-      try {
-        const { supabase } = await import('@/integrations/supabase/client');
-        await supabase.rpc('update_pos_telemetry', {
-          p_account_id: posAccountData.account_id,
-          p_order_total: newOrder.total
-        });
-      } catch (error) {
-        console.error('Error updating telemetry:', error);
-      }
-    }
     
     setReceiptPreview({ isOpen: true, order: newOrder });
     

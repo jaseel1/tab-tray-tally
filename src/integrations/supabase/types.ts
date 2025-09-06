@@ -186,6 +186,10 @@ export type Database = {
         Args: { p_account_id: string }
         Returns: Json
       }
+      update_pos_telemetry: {
+        Args: { p_account_id: string; p_order_total: number }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
