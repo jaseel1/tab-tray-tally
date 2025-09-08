@@ -374,6 +374,10 @@ export type Database = {
         Args: { p_account_id: string; p_days?: number }
         Returns: Json
       }
+      get_orders: {
+        Args: { p_account_id: string; p_limit?: number }
+        Returns: Json
+      }
       get_pos_accounts: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -418,23 +422,14 @@ export type Database = {
         Returns: Json
       }
       upsert_menu_item: {
-        Args:
-          | {
-              p_account_id: string
-              p_category: string
-              p_image?: string
-              p_item_id?: string
-              p_name: string
-              p_price: number
-            }
-          | {
-              p_account_id: string
-              p_category: string
-              p_image?: string
-              p_item_id?: string
-              p_name: string
-              p_price: number
-            }
+        Args: {
+          p_account_id: string
+          p_category: string
+          p_image?: string
+          p_item_id?: string
+          p_name: string
+          p_price: number
+        }
         Returns: Json
       }
       upsert_pos_settings: {

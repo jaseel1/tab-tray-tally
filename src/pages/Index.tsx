@@ -186,6 +186,31 @@ export default function BillingApp() {
       // Load item sales analytics
       await loadItemSalesData();
 
+      // Load orders
+      const { data: ordersData } = await supabase.rpc('get_orders', {
+        p_account_id: posAccountData.account_id
+      });
+
+      const ordersResult = ordersData as any;
+      if (ordersResult?.success) {
+        const serverOrders = ordersResult.data || [];
+        setOrders(serverOrders.map((order: any) => ({
+          id: order.order_number,
+          items: order.items.map((item: any) => ({
+            id: `${order.id}-${item.item_name}`, // Generate ID for cart items
+            name: item.item_name,
+            price: parseFloat(item.unit_price),
+            quantity: item.quantity,
+            category: "", // Not stored in order items
+            image: ""
+          })),
+          total: parseFloat(order.total_amount),
+          paymentMethod: order.payment_method,
+          timestamp: new Date(order.created_at),
+          status: "Completed"
+        })));
+      }
+
     } catch (error) {
       console.error('Error loading server data:', error);
       toast({
@@ -260,22 +285,33 @@ export default function BillingApp() {
     setIsSavingMenu(true);
     try {
       // Save categories first
-      const { data: categoriesData } = await supabase.rpc('upsert_categories', {
+      await supabase.rpc('upsert_categories', {
         p_account_id: posAccountData.account_id,
         p_categories: categories
       });
 
-      // Save each menu item
+      // Save each menu item and update with returned IDs
+      const updatedItems = [];
       for (const item of menuItems) {
         const { data } = await supabase.rpc('upsert_menu_item', {
           p_account_id: posAccountData.account_id,
           p_name: item.name,
           p_price: item.price,
           p_category: item.category,
-          p_item_id: item.id ? item.id : null,
+          p_item_id: item.id && item.id.length > 10 ? item.id : null, // Only pass valid UUIDs
           p_image: item.image
         });
+
+        const result = data as any;
+        if (result?.success) {
+          updatedItems.push({ ...item, id: result.id });
+        } else {
+          updatedItems.push(item);
+        }
       }
+      
+      // Update local state with server IDs
+      setMenuItems(updatedItems);
 
       toast({
         title: "Menu saved",
@@ -402,7 +438,7 @@ export default function BillingApp() {
           p_order_number: orderNumber,
           p_total_amount: orderTotal,
           p_payment_method: paymentMethod,
-          p_items: JSON.stringify(orderItems)
+          p_items: orderItems // Pass as array, not string
         });
 
         const orderResult = data as any;
@@ -858,23 +894,24 @@ export default function BillingApp() {
         {/* Menu Management */}
         <TabsContent value="menu">
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-foreground">Menu Management</h2>
-              <Button 
-                onClick={saveMenuToServer}
-                disabled={isSavingMenu || isLoadingData}
-                className="rounded-xl"
-              >
-                <Save className="mr-2 h-4 w-4" />
-                {isSavingMenu ? "Saving..." : "Save Menu"}
-              </Button>
-            </div>
+            <h2 className="text-xl font-bold text-foreground">Menu Management</h2>
             <MenuManager 
               items={menuItems} 
               onItemsChange={setMenuItems}
               categories={categories}
               onCategoriesChange={handleCategoriesChange}
             />
+            <div className="flex justify-end">
+              <Button 
+                onClick={saveMenuToServer}
+                disabled={isSavingMenu || isLoadingData}
+                size="sm"
+                className="rounded-xl"
+              >
+                <Save className="mr-2 h-3 w-3" />
+                {isSavingMenu ? "Saving..." : "Save Menu"}
+              </Button>
+            </div>
           </div>
         </TabsContent>
 
@@ -1085,20 +1122,24 @@ export default function BillingApp() {
                     </Select>
                   </div>
                   
-                  {settings.taxRate > 0 && (
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <Label className="text-foreground">Price Includes GST</Label>
-                        <p className="text-xs text-muted-foreground">
-                          {settings.gstInclusive ? "GST is included in item prices" : "GST will be added extra"}
-                        </p>
-                      </div>
-                      <Switch
-                        checked={settings.gstInclusive || false}
-                        onCheckedChange={(value) => handleSettingsChange('gstInclusive', value)}
-                      />
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <Label className="text-foreground">Price Includes GST</Label>
+                      <p className="text-xs text-muted-foreground">
+                        {settings.taxRate === 0 
+                          ? "Enable GST rate to configure this option"
+                          : settings.gstInclusive 
+                            ? "GST is included in item prices" 
+                            : "GST will be added extra"
+                        }
+                      </p>
                     </div>
-                  )}
+                    <Switch
+                      checked={settings.gstInclusive || false}
+                      disabled={settings.taxRate === 0}
+                      onCheckedChange={(value) => handleSettingsChange('gstInclusive', value)}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
