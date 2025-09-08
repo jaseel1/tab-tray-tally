@@ -21,9 +21,10 @@ interface MenuManagerProps {
   onItemsChange: (items: MenuItem[]) => void;
   categories: string[];
   onCategoriesChange: (categories: string[]) => void;
+  readOnly?: boolean;
 }
 
-export function MenuManager({ items, onItemsChange, categories, onCategoriesChange }: MenuManagerProps) {
+export function MenuManager({ items, onItemsChange, categories, onCategoriesChange, readOnly = false }: MenuManagerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [formData, setFormData] = useState({
@@ -148,10 +149,12 @@ export function MenuManager({ items, onItemsChange, categories, onCategoriesChan
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold text-foreground">Menu Management</h2>
-        <Button onClick={openAddDialog} className="bg-primary hover:bg-primary/90">
-          <Plus className="mr-2" size={16} />
-          Add Item
-        </Button>
+        {!readOnly && (
+          <Button onClick={openAddDialog} className="bg-primary hover:bg-primary/90">
+            <Plus className="mr-2" size={16} />
+            Add Item
+          </Button>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -172,24 +175,26 @@ export function MenuManager({ items, onItemsChange, categories, onCategoriesChan
                 <p className="text-muted-foreground text-sm">{item.category}</p>
                 <p className="font-medium text-primary">₹{item.price}</p>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openEditDialog(item)}
-                  className="rounded-xl"
-                >
-                  <Edit size={14} />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => handleDelete(item.id)}
-                  className="rounded-xl"
-                >
-                  <Trash2 size={14} />
-                </Button>
-              </div>
+              {!readOnly && (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openEditDialog(item)}
+                    className="rounded-xl"
+                  >
+                    <Edit size={14} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDelete(item.id)}
+                    className="rounded-xl"
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -198,10 +203,12 @@ export function MenuManager({ items, onItemsChange, categories, onCategoriesChan
           <Card className="rounded-2xl shadow-md">
             <CardContent className="p-8 text-center">
               <p className="text-muted-foreground mb-4">No menu items yet</p>
-              <Button onClick={openAddDialog} className="bg-primary hover:bg-primary/90">
-                <Plus className="mr-2" size={16} />
-                Add First Item
-              </Button>
+              {!readOnly && (
+                <Button onClick={openAddDialog} className="bg-primary hover:bg-primary/90">
+                  <Plus className="mr-2" size={16} />
+                  Add First Item
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}

@@ -534,6 +534,8 @@ export default function BillingApp() {
       fssaiNumber: "",
       gstInclusive: false
     });
+    // Load server data immediately
+    setTimeout(() => loadServerData(), 100);
   };
 
   const handleAdminLogin = () => {
@@ -554,6 +556,8 @@ export default function BillingApp() {
     setSettings(defaultSettings);
     setCart([]);
     setItemSalesData([]);
+    // Reset to home tab
+    setActiveTab("home");
   };
 
   const getDaysRemaining = () => {
@@ -901,40 +905,44 @@ export default function BillingApp() {
 
         {/* Menu Management */}
         <TabsContent value="menu">
-          {userRole === 'owner' ? (
-            <div className="space-y-4">
-              <h2 className="text-xl font-bold text-foreground">Menu Management</h2>
-              <MenuManager 
-                items={menuItems} 
-                onItemsChange={setMenuItems}
-                categories={categories}
-                onCategoriesChange={handleCategoriesChange}
-              />
-              <div className="flex justify-end">
-                <Button 
-                  onClick={saveMenuToServer}
-                  disabled={isSavingMenu || isLoadingData}
-                  size="sm"
-                  className="rounded-xl"
-                >
-                  <Save className="mr-2 h-3 w-3" />
-                  {isSavingMenu ? "Saving..." : "Save Menu"}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 max-w-md mx-auto">
-                <div className="text-blue-600 mb-4">
-                  <Settings className="h-12 w-12 mx-auto opacity-50" />
-                </div>
-                <h3 className="text-lg font-medium text-blue-900 mb-2">View-Only Access</h3>
+          <div className="space-y-4">
+            {userRole === 'viewer' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                 <p className="text-blue-700 text-sm">
-                  You have view-only access. Menu editing is not available for your account.
+                  <span className="font-medium">View-Only Mode:</span> You can view the menu but cannot make changes.
                 </p>
               </div>
-            </div>
-          )}
+            )}
+            
+            <MenuManager 
+              items={menuItems} 
+              onItemsChange={setMenuItems}
+              categories={categories}
+              onCategoriesChange={handleCategoriesChange}
+              readOnly={userRole === 'viewer'}
+            />
+            
+            {userRole === 'owner' && (
+              <>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <p className="text-amber-700 text-sm">
+                    <span className="font-medium">Remember:</span> Click "Save Menu" after making changes to save them to the server.
+                  </p>
+                </div>
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={saveMenuToServer}
+                    disabled={isSavingMenu || isLoadingData}
+                    size="sm"
+                    className="rounded-xl"
+                  >
+                    <Save className="mr-2 h-3 w-3" />
+                    {isSavingMenu ? "Saving..." : "Save Menu"}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
         </TabsContent>
 
         {/* Orders History */}
