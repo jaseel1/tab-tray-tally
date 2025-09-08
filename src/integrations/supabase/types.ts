@@ -418,27 +418,36 @@ export type Database = {
         Returns: Json
       }
       upsert_menu_item: {
-        Args: {
-          p_account_id: string
-          p_category: string
-          p_image?: string
-          p_item_id?: string
-          p_name: string
-          p_price: number
-        }
+        Args:
+          | {
+              p_account_id: string
+              p_category: string
+              p_image?: string
+              p_item_id?: string
+              p_name: string
+              p_price: number
+            }
+          | {
+              p_account_id: string
+              p_category: string
+              p_image?: string
+              p_item_id?: string
+              p_name: string
+              p_price: number
+            }
         Returns: Json
       }
       upsert_pos_settings: {
         Args: {
           p_account_id: string
-          p_address: string
-          p_email: string
-          p_fssai_number: string
-          p_gst_inclusive: boolean
-          p_phone: string
-          p_privacy_mode: boolean
+          p_address?: string
+          p_email?: string
+          p_fssai_number?: string
+          p_gst_inclusive?: boolean
+          p_phone?: string
+          p_privacy_mode?: boolean
           p_restaurant_name: string
-          p_tax_rate: number
+          p_tax_rate?: number
         }
         Returns: Json
       }

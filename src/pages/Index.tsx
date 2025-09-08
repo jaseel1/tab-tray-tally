@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +26,14 @@ import {
   Calendar,
   FileText,
   Shield,
-  LogOut
+  LogOut,
+  Save,
+  TrendingUp,
+  Store,
+  Mail,
+  Phone,
+  MapPin,
+  Hash
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { MenuManager, MenuItem } from "@/components/MenuManager";
@@ -36,6 +43,7 @@ import { generateDailySalesPDF, generateMonthlySalesPDF, RestaurantSettings } fr
 import POSLoginScreen from "@/components/POSLoginScreen";
 import AdminLoginScreen from "@/components/AdminLoginScreen";
 import SuperAdminDashboard from "@/components/SuperAdminDashboard";
+import { supabase } from "@/integrations/supabase/client";
 
 import burgerImage from "@/assets/burger.jpg";
 import pizzaImage from "@/assets/pizza.jpg";
@@ -55,6 +63,18 @@ interface Order {
   status: string;
 }
 
+interface EnhancedRestaurantSettings extends RestaurantSettings {
+  fssaiNumber?: string;
+  gstInclusive?: boolean;
+}
+
+interface ItemSalesData {
+  item_name: string;
+  total_quantity: number;
+  total_revenue: number;
+  order_count: number;
+}
+
 const defaultMenuItems: MenuItem[] = [
   { id: "1", name: "Classic Burger", price: 120, image: burgerImage, category: "Mains" },
   { id: "2", name: "Margherita Pizza", price: 250, image: pizzaImage, category: "Mains" },
@@ -62,12 +82,14 @@ const defaultMenuItems: MenuItem[] = [
   { id: "4", name: "Coca Cola", price: 60, image: cokeImage, category: "Beverages" },
 ];
 
-const defaultSettings: RestaurantSettings = {
+const defaultSettings: EnhancedRestaurantSettings = {
   name: "My Restaurant",
   address: "123 Restaurant Street, City",
   phone: "+91 12345 67890",
   email: "info@myrestaurant.com",
-  taxRate: 18
+  taxRate: 0,
+  fssaiNumber: "",
+  gstInclusive: false
 };
 
 export default function BillingApp() {
@@ -81,132 +103,195 @@ export default function BillingApp() {
   const [activeTab, setActiveTab] = useState("home");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(defaultMenuItems);
-  const [settings, setSettings] = useState<RestaurantSettings>(defaultSettings);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [settings, setSettings] = useState<EnhancedRestaurantSettings>(defaultSettings);
   const [searchTerm, setSearchTerm] = useState("");
   const [receiptPreview, setReceiptPreview] = useState<{ isOpen: boolean; order: Order | null }>({
     isOpen: false,
     order: null
   });
-  const [categories, setCategories] = useState<string[]>(['Appetizers', 'Main Course', 'Desserts', 'Beverages', 'Mains']);
+  const [categories, setCategories] = useState<string[]>(['General']);
   const [privacyMode, setPrivacyMode] = useState(false);
+  const [itemSalesData, setItemSalesData] = useState<ItemSalesData[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isSavingMenu, setIsSavingMenu] = useState(false);
   const { toast } = useToast();
 
-  // Load account-specific data from localStorage when account changes
+  // Load data from server when account changes
   useEffect(() => {
     if (!posAccountData?.account_id) return;
-    
-    const accountId = posAccountData.account_id;
-    const savedOrders = localStorage.getItem(`pos-orders-${accountId}`);
-    const savedMenuItems = localStorage.getItem(`pos-menu-items-${accountId}`);
-    const savedSettings = localStorage.getItem(`pos-settings-${accountId}`);
-    const savedCategories = localStorage.getItem(`pos-categories-${accountId}`);
-    const savedPrivacyMode = localStorage.getItem(`pos-privacy-${accountId}`);
-    
-    if (savedOrders) {
-      try {
-        const parsed = JSON.parse(savedOrders);
-        const ordersWithDates = parsed.map((order: any) => ({
-          ...order,
-          timestamp: new Date(order.timestamp)
-        }));
-        setOrders(ordersWithDates);
-      } catch (error) {
-        console.error('Error loading orders:', error);
-        setOrders([]);
-      }
-    } else {
-      setOrders([]);
-    }
-    
-    if (savedMenuItems) {
-      try {
-        setMenuItems(JSON.parse(savedMenuItems));
-      } catch (error) {
-        console.error('Error loading menu items:', error);
-        setMenuItems([]);
-      }
-    } else {
-      setMenuItems([]);
-    }
-    
-    if (savedSettings) {
-      try {
-        const loadedSettings = JSON.parse(savedSettings);
-        setSettings(loadedSettings);
-      } catch (error) {
-        console.error('Error loading settings:', error);
-        setSettings({
-          name: posAccountData.restaurant_name,
-          address: "",
-          phone: "",
-          email: "",
-          taxRate: 18
-        });
-      }
-    } else {
-      setSettings({
-        name: posAccountData.restaurant_name,
-        address: "",
-        phone: "",
-        email: "",
-        taxRate: 18
-      });
-    }
-
-    if (savedCategories) {
-      try {
-        setCategories(JSON.parse(savedCategories));
-      } catch (error) {
-        console.error('Error loading categories:', error);
-        setCategories(['General']);
-      }
-    } else {
-      setCategories(['General']);
-    }
-
-    if (savedPrivacyMode) {
-      try {
-        setPrivacyMode(JSON.parse(savedPrivacyMode));
-      } catch (error) {
-        console.error('Error loading privacy mode:', error);
-        setPrivacyMode(false);
-      }
-    } else {
-      setPrivacyMode(false);
-    }
+    loadServerData();
   }, [posAccountData]);
 
-  // Save account-specific data to localStorage whenever data changes
-  useEffect(() => {
-    if (posAccountData?.account_id) {
-      localStorage.setItem(`pos-orders-${posAccountData.account_id}`, JSON.stringify(orders));
-    }
-  }, [orders, posAccountData]);
+  const loadServerData = async () => {
+    if (!posAccountData?.account_id) return;
+    
+    setIsLoadingData(true);
+    try {
+      // Load settings
+      const { data: settingsData, error: settingsError } = await supabase.rpc('get_pos_settings', {
+        p_account_id: posAccountData.account_id
+      });
 
-  useEffect(() => {
-    if (posAccountData?.account_id) {
-      localStorage.setItem(`pos-menu-items-${posAccountData.account_id}`, JSON.stringify(menuItems));
-    }
-  }, [menuItems, posAccountData]);
+      const settingsResult = settingsData as any;
+      if (settingsResult?.success && settingsResult.data) {
+        setSettings({
+          name: settingsResult.data.restaurant_name,
+          address: settingsResult.data.address || "",
+          phone: settingsResult.data.phone || "",
+          email: settingsResult.data.email || "",
+          taxRate: settingsResult.data.tax_rate || 0,
+          fssaiNumber: settingsResult.data.fssai_number || "",
+          gstInclusive: settingsResult.data.gst_inclusive || false
+        });
+        setPrivacyMode(settingsResult.data.privacy_mode || false);
+      } else {
+        // Use default settings with account name
+        setSettings({
+          ...defaultSettings,
+          name: posAccountData.restaurant_name
+        });
+      }
 
-  useEffect(() => {
-    if (posAccountData?.account_id) {
-      localStorage.setItem(`pos-settings-${posAccountData.account_id}`, JSON.stringify(settings));
-    }
-  }, [settings, posAccountData]);
+      // Load menu items
+      const { data: menuData, error: menuError } = await supabase.rpc('list_menu_items', {
+        p_account_id: posAccountData.account_id
+      });
 
-  useEffect(() => {
-    if (posAccountData?.account_id) {
-      localStorage.setItem(`pos-categories-${posAccountData.account_id}`, JSON.stringify(categories));
-    }
-  }, [categories, posAccountData]);
+      const menuResult = menuData as any;
+      if (menuResult?.success) {
+        const serverItems = menuResult.data || [];
+        setMenuItems(serverItems.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          price: parseFloat(item.price),
+          category: item.category,
+          image: item.image || ""
+        })));
+      } else {
+        setMenuItems([]);
+      }
 
-  useEffect(() => {
-    if (posAccountData?.account_id) {
-      localStorage.setItem(`pos-privacy-${posAccountData.account_id}`, JSON.stringify(privacyMode));
+      // Load categories
+      const { data: categoriesData, error: categoriesError } = await supabase.rpc('get_categories', {
+        p_account_id: posAccountData.account_id
+      });
+
+      const categoriesResult = categoriesData as any;
+      if (categoriesResult?.success) {
+        setCategories(categoriesResult.data || ['General']);
+      }
+
+      // Load item sales analytics
+      await loadItemSalesData();
+
+    } catch (error) {
+      console.error('Error loading server data:', error);
+      toast({
+        title: "Error loading data",
+        description: "Failed to load data from server. Using local data.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingData(false);
     }
-  }, [privacyMode, posAccountData]);
+  };
+
+  const loadItemSalesData = async () => {
+    if (!posAccountData?.account_id) return;
+    
+    try {
+      const { data: salesData } = await supabase.rpc('get_item_sales', {
+        p_account_id: posAccountData.account_id,
+        p_days: 30
+      });
+
+      const salesResult = salesData as any;
+      if (salesResult?.success) {
+        setItemSalesData(salesResult.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading sales data:', error);
+    }
+  };
+
+  const saveSettingsToServer = async () => {
+    if (!posAccountData?.account_id || isSavingSettings) return;
+    
+    setIsSavingSettings(true);
+    try {
+      const { data, error } = await supabase.rpc('upsert_pos_settings', {
+        p_account_id: posAccountData.account_id,
+        p_restaurant_name: settings.name,
+        p_address: settings.address,
+        p_phone: settings.phone,
+        p_email: settings.email,
+        p_fssai_number: settings.fssaiNumber,
+        p_tax_rate: settings.taxRate,
+        p_gst_inclusive: settings.gstInclusive,
+        p_privacy_mode: privacyMode
+      });
+
+      const result = data as any;
+      if (result?.success) {
+        toast({
+          title: "Settings saved",
+          description: "Settings have been saved to server successfully.",
+        });
+      } else {
+        throw new Error('Failed to save settings');
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast({
+        title: "Error saving settings",
+        description: "Failed to save settings to server.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const saveMenuToServer = async () => {
+    if (!posAccountData?.account_id || isSavingMenu) return;
+    
+    setIsSavingMenu(true);
+    try {
+      // Save categories first
+      const { data: categoriesData } = await supabase.rpc('upsert_categories', {
+        p_account_id: posAccountData.account_id,
+        p_categories: categories
+      });
+
+      // Save each menu item
+      for (const item of menuItems) {
+        const { data } = await supabase.rpc('upsert_menu_item', {
+          p_account_id: posAccountData.account_id,
+          p_name: item.name,
+          p_price: item.price,
+          p_category: item.category,
+          p_item_id: item.id ? item.id : null,
+          p_image: item.image
+        });
+      }
+
+      toast({
+        title: "Menu saved",
+        description: "Menu items have been saved to server successfully.",
+      });
+    } catch (error) {
+      console.error('Error saving menu:', error);
+      toast({
+        title: "Error saving menu",
+        description: "Failed to save menu to server.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingMenu(false);
+    }
+  };
 
   const addToCart = (item: MenuItem) => {
     setCart(prevCart => {
@@ -245,10 +330,36 @@ export default function BillingApp() {
   };
 
   const getTotalPrice = () => {
+    const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    
+    if (settings.gstInclusive || settings.taxRate === 0) {
+      return subtotal;
+    }
+    
+    // GST is extra
+    const gstAmount = (subtotal * settings.taxRate) / 100;
+    return subtotal + gstAmount;
+  };
+
+  const getSubtotal = () => {
     return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
-  const processOrder = (paymentMethod: string) => {
+  const getGSTAmount = () => {
+    if (settings.taxRate === 0) return 0;
+    
+    const subtotal = getSubtotal();
+    
+    if (settings.gstInclusive) {
+      // Calculate GST from inclusive price
+      return (subtotal * settings.taxRate) / (100 + settings.taxRate);
+    } else {
+      // Calculate GST as extra
+      return (subtotal * settings.taxRate) / 100;
+    }
+  };
+
+  const processOrder = async (paymentMethod: string) => {
     if (cart.length === 0) {
       toast({
         title: "Cart is empty",
@@ -258,27 +369,59 @@ export default function BillingApp() {
       return;
     }
 
+    const orderTotal = getTotalPrice();
+    const orderNumber = `ORD-${Date.now()}`;
+    
     const newOrder: Order = {
-      id: Date.now().toString(),
+      id: orderNumber,
       items: [...cart],
-      total: getTotalPrice(),
+      total: orderTotal,
       paymentMethod,
       timestamp: new Date(),
       status: "Completed"
     };
 
+    // Save to local state immediately
     setOrders(prevOrders => [newOrder, ...prevOrders]);
     setCart([]);
     
     setReceiptPreview({ isOpen: true, order: newOrder });
     
+    // Save to server
+    if (posAccountData?.account_id) {
+      try {
+        const orderItems = cart.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          total: item.price * item.quantity
+        }));
+
+        const { data } = await supabase.rpc('create_order', {
+          p_account_id: posAccountData.account_id,
+          p_order_number: orderNumber,
+          p_total_amount: orderTotal,
+          p_payment_method: paymentMethod,
+          p_items: JSON.stringify(orderItems)
+        });
+
+        const orderResult = data as any;
+        if (orderResult?.success) {
+          // Refresh analytics data
+          await loadItemSalesData();
+        }
+      } catch (error) {
+        console.error('Error saving order to server:', error);
+      }
+    }
+    
     toast({
       title: "Order processed successfully",
-      description: `Order #${newOrder.id} has been completed.`,
+      description: `Order ${orderNumber} has been completed.`,
     });
   };
 
-  const handleSettingsChange = (field: keyof RestaurantSettings, value: string | number) => {
+  const handleSettingsChange = (field: keyof EnhancedRestaurantSettings, value: string | number | boolean) => {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
 
@@ -349,7 +492,9 @@ export default function BillingApp() {
       address: "",
       phone: "",
       email: "",
-      taxRate: 18
+      taxRate: 0,
+      fssaiNumber: "",
+      gstInclusive: false
     });
   };
 
@@ -370,6 +515,7 @@ export default function BillingApp() {
     setPrivacyMode(false);
     setSettings(defaultSettings);
     setCart([]);
+    setItemSalesData([]);
   };
 
   const getDaysRemaining = () => {
@@ -490,6 +636,38 @@ export default function BillingApp() {
                   <p className="text-lg font-semibold text-primary-foreground">Menu Management</p>
                 </CardContent>
               </Card>
+
+              {/* Item-wise Analytics Dashboard */}
+              {itemSalesData.length > 0 && (
+                <Card className="bg-card shadow-lg rounded-2xl">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-foreground">
+                      <TrendingUp className="mr-2" size={20} />
+                      Top Selling Items (30 Days)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {itemSalesData.slice(0, 5).map((item, index) => (
+                        <div key={item.item_name} className="flex justify-between items-center">
+                          <div>
+                            <p className="font-medium text-foreground">{item.item_name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {item.total_quantity} sold • {item.order_count} orders
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-foreground">₹{item.total_revenue}</p>
+                            <Badge variant={index < 3 ? "default" : "secondary"}>
+                              #{index + 1}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               
               <div className="grid grid-cols-2 gap-4">
                 <Card className="bg-card shadow-md rounded-2xl">
@@ -553,7 +731,12 @@ export default function BillingApp() {
                       className="w-full h-24 object-cover rounded-xl mb-2"
                     />
                     <h3 className="font-semibold text-sm mb-1 text-foreground">{item.name}</h3>
-                    <p className="text-muted-foreground text-sm mb-2">₹{item.price}</p>
+                    <p className="text-muted-foreground text-sm mb-2">
+                      ₹{item.price}
+                      {settings.gstInclusive && settings.taxRate > 0 && (
+                        <span className="text-xs ml-1">(incl. GST)</span>
+                      )}
+                    </p>
                     <Button 
                       size="sm" 
                       onClick={() => addToCart(item)}
@@ -616,8 +799,23 @@ export default function BillingApp() {
                   </div>
                   
                   <div className="border-t pt-3">
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="font-bold text-lg text-foreground">Total: ₹{getTotalPrice()}</span>
+                    <div className="space-y-2 mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-foreground">Subtotal:</span>
+                        <span className="text-foreground">₹{getSubtotal().toFixed(2)}</span>
+                      </div>
+                      {settings.taxRate > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            GST ({settings.taxRate}%{settings.gstInclusive ? " incl." : " extra"}):
+                          </span>
+                          <span className="text-muted-foreground">₹{getGSTAmount().toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center border-t pt-2">
+                        <span className="font-bold text-lg text-foreground">Total:</span>
+                        <span className="font-bold text-lg text-foreground">₹{getTotalPrice().toFixed(2)}</span>
+                      </div>
                     </div>
                     
                     <div className="grid grid-cols-3 gap-2">
@@ -659,12 +857,25 @@ export default function BillingApp() {
 
         {/* Menu Management */}
         <TabsContent value="menu">
-          <MenuManager 
-            items={menuItems} 
-            onItemsChange={setMenuItems}
-            categories={categories}
-            onCategoriesChange={handleCategoriesChange}
-          />
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold text-foreground">Menu Management</h2>
+              <Button 
+                onClick={saveMenuToServer}
+                disabled={isSavingMenu || isLoadingData}
+                className="rounded-xl"
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {isSavingMenu ? "Saving..." : "Save Menu"}
+              </Button>
+            </div>
+            <MenuManager 
+              items={menuItems} 
+              onItemsChange={setMenuItems}
+              categories={categories}
+              onCategoriesChange={handleCategoriesChange}
+            />
+          </div>
         </TabsContent>
 
         {/* Orders History */}
@@ -737,45 +948,80 @@ export default function BillingApp() {
             </div>
             
             <Card className="rounded-2xl shadow-md">
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-4 text-foreground">Restaurant Information</h3>
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Restaurant Name</Label>
-                    <Input 
-                      value={settings.name}
-                      onChange={(e) => handleSettingsChange('name', e.target.value)}
-                      placeholder="My Restaurant" 
-                      className="rounded-xl" 
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Address</Label>
-                    <Input 
-                      value={settings.address}
-                      onChange={(e) => handleSettingsChange('address', e.target.value)}
-                      placeholder="Restaurant Address" 
-                      className="rounded-xl" 
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Phone</Label>
-                    <Input 
-                      value={settings.phone}
-                      onChange={(e) => handleSettingsChange('phone', e.target.value)}
-                      placeholder="+91 12345 67890" 
-                      className="rounded-xl" 
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Email</Label>
-                    <Input 
-                      value={settings.email}
-                      onChange={(e) => handleSettingsChange('email', e.target.value)}
-                      placeholder="info@restaurant.com" 
-                      className="rounded-xl" 
-                    />
-                  </div>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="flex items-center text-foreground">
+                    <Store className="mr-2 h-5 w-5" />
+                    Restaurant Information
+                  </CardTitle>
+                  <Button 
+                    onClick={saveSettingsToServer}
+                    disabled={isSavingSettings || isLoadingData}
+                    size="sm"
+                    className="rounded-xl"
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    {isSavingSettings ? "Saving..." : "Save"}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="text-sm text-muted-foreground">Restaurant Name</Label>
+                  <Input 
+                    value={settings.name}
+                    onChange={(e) => handleSettingsChange('name', e.target.value)}
+                    placeholder="My Restaurant" 
+                    className="rounded-xl" 
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground flex items-center">
+                    <MapPin className="mr-1 h-3 w-3" />
+                    Address
+                  </Label>
+                  <Input 
+                    value={settings.address}
+                    onChange={(e) => handleSettingsChange('address', e.target.value)}
+                    placeholder="Restaurant Address" 
+                    className="rounded-xl" 
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground flex items-center">
+                    <Phone className="mr-1 h-3 w-3" />
+                    Phone
+                  </Label>
+                  <Input 
+                    value={settings.phone}
+                    onChange={(e) => handleSettingsChange('phone', e.target.value)}
+                    placeholder="+91 12345 67890" 
+                    className="rounded-xl" 
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground flex items-center">
+                    <Mail className="mr-1 h-3 w-3" />
+                    Email
+                  </Label>
+                  <Input 
+                    value={settings.email}
+                    onChange={(e) => handleSettingsChange('email', e.target.value)}
+                    placeholder="info@restaurant.com" 
+                    className="rounded-xl" 
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground flex items-center">
+                    <Hash className="mr-1 h-3 w-3" />
+                    FSSAI Number (Optional)
+                  </Label>
+                  <Input 
+                    value={settings.fssaiNumber || ""}
+                    onChange={(e) => handleSettingsChange('fssaiNumber', e.target.value)}
+                    placeholder="Enter FSSAI license number" 
+                    className="rounded-xl" 
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -818,12 +1064,12 @@ export default function BillingApp() {
 
             <Card className="rounded-2xl shadow-md">
               <CardContent className="p-4">
-                <h3 className="font-semibold mb-4 text-foreground">Tax Settings</h3>
-                <div className="space-y-3">
+                <h3 className="font-semibold mb-4 text-foreground">GST Settings</h3>
+                <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <Label className="text-foreground">GST Rate (%)</Label>
                     <Select
-                      value={settings.taxRate.toString()}
+                      value={settings.taxRate?.toString() || "0"}
                       onValueChange={(value) => handleSettingsChange('taxRate', parseFloat(value))}
                     >
                       <SelectTrigger className="w-24 rounded-xl">
@@ -838,6 +1084,21 @@ export default function BillingApp() {
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  {settings.taxRate > 0 && (
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <Label className="text-foreground">Price Includes GST</Label>
+                        <p className="text-xs text-muted-foreground">
+                          {settings.gstInclusive ? "GST is included in item prices" : "GST will be added extra"}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={settings.gstInclusive || false}
+                        onCheckedChange={(value) => handleSettingsChange('gstInclusive', value)}
+                      />
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
