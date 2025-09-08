@@ -18,6 +18,9 @@ A comprehensive Point of Sale (POS) system built with React, TypeScript, and Sup
 - [Authentication System](./technical/authentication.md) - User roles and security
 - [State Management](./technical/state-management.md) - Frontend data flow
 
+### Mobile Development
+- [Flutter Integration](./mobile/flutter-integration.md) - Complete guide for Flutter mobile app development
+
 ### Development
 - [Setup & Installation](./development/setup.md) - Development environment setup
 - [Contributing Guidelines](./development/contributing.md) - Code standards and workflow
