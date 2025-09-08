@@ -16,7 +16,9 @@ import {
   ShoppingCart,
   Power,
   PowerOff,
-  LogOut
+  LogOut,
+  Eye,
+  UserPlus
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +34,14 @@ interface POSAccount {
   total_orders: number;
   total_revenue: number;
   last_active: string;
+  viewer_count: number;
+}
+
+interface ViewerAccount {
+  id: string;
+  mobile_number: string;
+  status: string;
+  created_at: string;
 }
 
 interface SuperAdminDashboardProps {
@@ -42,11 +52,20 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
   const [accounts, setAccounts] = useState<POSAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showViewersDialog, setShowViewersDialog] = useState(false);
+  const [showCreateViewerDialog, setShowCreateViewerDialog] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [selectedAccountName, setSelectedAccountName] = useState<string>('');
+  const [viewers, setViewers] = useState<ViewerAccount[]>([]);
   const [newAccount, setNewAccount] = useState({
     mobile_number: '',
     pin: '',
     restaurant_name: '',
     license_duration_days: 365
+  });
+  const [newViewer, setNewViewer] = useState({
+    mobile_number: '',
+    pin: ''
   });
   const { toast } = useToast();
 
@@ -58,7 +77,12 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
     try {
       const { data, error } = await supabase.rpc('get_pos_accounts');
       if (error) throw error;
-      setAccounts(data || []);
+      // Load viewer_count safely since it may not exist
+      const accountsWithViewers = (data || []).map((account: any) => ({
+        ...account,
+        viewer_count: account.viewer_count || 0
+      }));
+      setAccounts(accountsWithViewers);
     } catch (error) {
       toast({
         title: 'Error',
@@ -136,6 +160,95 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
         variant: 'destructive'
       });
     }
+  };
+
+  const fetchViewers = async (accountId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('list_pos_viewers' as any, {
+        p_account_id: accountId
+      });
+      if (error) throw error;
+      const result = data as any;
+      if (result.success) {
+        setViewers(result.data || []);
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch viewers',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleCreateViewer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const { data, error } = await supabase.rpc('create_pos_viewer' as any, {
+        p_account_id: selectedAccountId,
+        p_mobile_number: newViewer.mobile_number,
+        p_pin: newViewer.pin
+      });
+
+      if (error) throw error;
+
+      const result = data as any;
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: 'Viewer created successfully'
+        });
+        setShowCreateViewerDialog(false);
+        setNewViewer({ mobile_number: '', pin: '' });
+        fetchViewers(selectedAccountId);
+        fetchAccounts(); // Refresh to update viewer count
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message,
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to create viewer',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const toggleViewerStatus = async (viewerId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('toggle_pos_viewer_status' as any, {
+        p_viewer_id: viewerId
+      });
+
+      if (error) throw error;
+
+      const result = data as any;
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: `Viewer ${result.new_status}`
+        });
+        fetchViewers(selectedAccountId);
+        fetchAccounts(); // Refresh to update viewer count
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update viewer status',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const openViewersDialog = (accountId: string, accountName: string) => {
+    setSelectedAccountId(accountId);
+    setSelectedAccountName(accountName);
+    fetchViewers(accountId);
+    setShowViewersDialog(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -300,6 +413,7 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
                   <TableHead>License</TableHead>
                   <TableHead>Orders</TableHead>
                   <TableHead>Revenue</TableHead>
+                  <TableHead>Viewers</TableHead>
                   <TableHead>Last Active</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -326,6 +440,17 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
                     </TableCell>
                     <TableCell>{account.total_orders || 0}</TableCell>
                     <TableCell>₹{Number(account.total_revenue || 0).toLocaleString()}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openViewersDialog(account.id, account.restaurant_name)}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        {account.viewer_count}
+                      </Button>
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {account.last_active ? new Date(account.last_active).toLocaleDateString() : 'Never'}
                     </TableCell>
@@ -348,6 +473,108 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
             </Table>
           </CardContent>
         </Card>
+
+        {/* Viewers Management Dialog */}
+        <Dialog open={showViewersDialog} onOpenChange={setShowViewersDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>View-Only Users - {selectedAccountName}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-muted-foreground">
+                  Manage users who can view reports but cannot edit anything
+                </p>
+                <Dialog open={showCreateViewerDialog} onOpenChange={setShowCreateViewerDialog}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Add Viewer
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add View-Only User</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateViewer} className="space-y-4">
+                      <div>
+                        <Label htmlFor="viewer-mobile">Mobile Number</Label>
+                        <Input
+                          id="viewer-mobile"
+                          value={newViewer.mobile_number}
+                          onChange={(e) => setNewViewer({...newViewer, mobile_number: e.target.value})}
+                          required
+                          maxLength={10}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="viewer-pin">8-Digit PIN</Label>
+                        <Input
+                          id="viewer-pin"
+                          type="password"
+                          value={newViewer.pin}
+                          onChange={(e) => setNewViewer({...newViewer, pin: e.target.value})}
+                          required
+                          maxLength={8}
+                          minLength={8}
+                        />
+                      </div>
+                      <Button type="submit" className="w-full">Add Viewer</Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Mobile Number</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {viewers.map((viewer) => (
+                      <TableRow key={viewer.id}>
+                        <TableCell>{viewer.mobile_number}</TableCell>
+                        <TableCell>
+                          <Badge className={`${getStatusColor(viewer.status)} text-white`}>
+                            {viewer.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {new Date(viewer.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toggleViewerStatus(viewer.id)}
+                          >
+                            {viewer.status === 'active' ? (
+                              <PowerOff className="h-4 w-4" />
+                            ) : (
+                              <Power className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {viewers.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                          No view-only users created yet
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

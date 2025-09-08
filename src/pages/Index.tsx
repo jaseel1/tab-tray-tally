@@ -98,6 +98,7 @@ export default function BillingApp() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [posAccountData, setPosAccountData] = useState<any>(null);
+  const [userRole, setUserRole] = useState<'owner' | 'viewer'>('owner');
   
   // Existing states
   const [activeTab, setActiveTab] = useState("home");
@@ -518,6 +519,7 @@ export default function BillingApp() {
   const handlePOSLogin = (accountData: any) => {
     setIsLoggedIn(true);
     setPosAccountData(accountData);
+    setUserRole(accountData.role || 'owner');
     // Clear existing data first
     setOrders([]);
     setMenuItems([]);
@@ -619,7 +621,7 @@ export default function BillingApp() {
             <ClipboardList size={20} />
             <span className="text-xs mt-1">Orders</span>
           </TabsTrigger>
-          <TabsTrigger value="settings" className="flex flex-col items-center p-2 rounded-xl">
+          <TabsTrigger value="settings" className={`flex flex-col items-center p-2 rounded-xl ${userRole === 'viewer' ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={userRole === 'viewer'}>
             <Settings size={20} />
             <span className="text-xs mt-1">Settings</span>
           </TabsTrigger>
@@ -628,19 +630,23 @@ export default function BillingApp() {
         {/* Home Dashboard */}
         <TabsContent value="home">
           <div className="space-y-4">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h1 className="text-2xl font-bold text-foreground mb-2">Restaurant POS</h1>
-                <p className="text-muted-foreground">Manage your restaurant operations</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium">Privacy</span>
-                <Switch
-                  checked={privacyMode}
-                  onCheckedChange={setPrivacyMode}
-                />
-              </div>
-            </div>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground mb-2">Restaurant POS</h1>
+            <p className="text-muted-foreground">
+              {userRole === 'viewer' && <span className="text-blue-600 font-medium">[View-Only] </span>}
+              Manage your restaurant operations
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">Privacy</span>
+            <Switch
+              checked={privacyMode}
+              onCheckedChange={setPrivacyMode}
+              disabled={userRole === 'viewer'}
+            />
+          </div>
+        </div>
             
             <div className="grid gap-4">
               <Card 
@@ -665,11 +671,13 @@ export default function BillingApp() {
               
               <Card 
                 className="bg-gradient-secondary shadow-lg rounded-2xl cursor-pointer hover:shadow-xl transition-shadow"
-                onClick={() => setActiveTab("menu")}
+                onClick={() => userRole === 'owner' ? setActiveTab("menu") : null}
               >
-                <CardContent className="p-6 text-center">
+                <CardContent className={`p-6 text-center ${userRole === 'viewer' ? 'opacity-50' : ''}`}>
                   <Menu className="mx-auto mb-3 text-primary-foreground" size={24} />
-                  <p className="text-lg font-semibold text-primary-foreground">Menu Management</p>
+                  <p className="text-lg font-semibold text-primary-foreground">
+                    Menu Management {userRole === 'viewer' && '(View Only)'}
+                  </p>
                 </CardContent>
               </Card>
 
@@ -893,26 +901,40 @@ export default function BillingApp() {
 
         {/* Menu Management */}
         <TabsContent value="menu">
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold text-foreground">Menu Management</h2>
-            <MenuManager 
-              items={menuItems} 
-              onItemsChange={setMenuItems}
-              categories={categories}
-              onCategoriesChange={handleCategoriesChange}
-            />
-            <div className="flex justify-end">
-              <Button 
-                onClick={saveMenuToServer}
-                disabled={isSavingMenu || isLoadingData}
-                size="sm"
-                className="rounded-xl"
-              >
-                <Save className="mr-2 h-3 w-3" />
-                {isSavingMenu ? "Saving..." : "Save Menu"}
-              </Button>
+          {userRole === 'owner' ? (
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold text-foreground">Menu Management</h2>
+              <MenuManager 
+                items={menuItems} 
+                onItemsChange={setMenuItems}
+                categories={categories}
+                onCategoriesChange={handleCategoriesChange}
+              />
+              <div className="flex justify-end">
+                <Button 
+                  onClick={saveMenuToServer}
+                  disabled={isSavingMenu || isLoadingData}
+                  size="sm"
+                  className="rounded-xl"
+                >
+                  <Save className="mr-2 h-3 w-3" />
+                  {isSavingMenu ? "Saving..." : "Save Menu"}
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 max-w-md mx-auto">
+                <div className="text-blue-600 mb-4">
+                  <Settings className="h-12 w-12 mx-auto opacity-50" />
+                </div>
+                <h3 className="text-lg font-medium text-blue-900 mb-2">View-Only Access</h3>
+                <p className="text-blue-700 text-sm">
+                  You have view-only access. Menu editing is not available for your account.
+                </p>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         {/* Orders History */}
