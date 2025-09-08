@@ -33,7 +33,8 @@ import {
   Mail,
   Phone,
   MapPin,
-  Hash
+  Hash,
+  RefreshCw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { MenuManager, MenuItem } from "@/components/MenuManager";
@@ -156,33 +157,7 @@ export default function BillingApp() {
       }
 
       // Load menu items
-      const { data: menuData, error: menuError } = await supabase.rpc('list_menu_items', {
-        p_account_id: posAccountData.account_id
-      });
-
-      const menuResult = menuData as any;
-      if (menuResult?.success) {
-        const serverItems = menuResult.data || [];
-        setMenuItems(serverItems.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          price: parseFloat(item.price),
-          category: item.category,
-          image: item.image || ""
-        })));
-      } else {
-        setMenuItems([]);
-      }
-
-      // Load categories
-      const { data: categoriesData, error: categoriesError } = await supabase.rpc('get_categories', {
-        p_account_id: posAccountData.account_id
-      });
-
-      const categoriesResult = categoriesData as any;
-      if (categoriesResult?.success) {
-        setCategories(categoriesResult.data || ['General']);
-      }
+      await loadMenuFromServer();
 
       // Load item sales analytics
       await loadItemSalesData();
@@ -291,6 +266,33 @@ export default function BillingApp() {
         p_categories: categories
       });
 
+      // Get current server items to identify deletions
+      const { data: serverItemsData } = await supabase.rpc('list_menu_items', {
+        p_account_id: posAccountData.account_id
+      });
+
+      const serverResult = serverItemsData as any;
+      const serverItems = serverResult?.success ? serverResult.data || [] : [];
+      
+      // Helper function to check if ID is a valid UUID
+      const isValidUUID = (id: string) => {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        return id && uuidRegex.test(id);
+      };
+
+      // Delete items that exist on server but not in local menuItems
+      const localItemIds = menuItems.filter(item => isValidUUID(item.id)).map(item => item.id);
+      const serverItemsToDelete = serverItems.filter((serverItem: any) => 
+        !localItemIds.includes(serverItem.id)
+      );
+
+      for (const itemToDelete of serverItemsToDelete) {
+        await supabase.rpc('delete_menu_item', {
+          p_account_id: posAccountData.account_id,
+          p_item_id: itemToDelete.id
+        });
+      }
+
       // Save each menu item and update with returned IDs
       const updatedItems = [];
       for (const item of menuItems) {
@@ -299,7 +301,7 @@ export default function BillingApp() {
           p_name: item.name,
           p_price: item.price,
           p_category: item.category,
-          p_item_id: item.id && item.id.length > 10 ? item.id : null, // Only pass valid UUIDs
+          p_item_id: isValidUUID(item.id) ? item.id : null,
           p_image: item.image
         });
 
@@ -311,8 +313,8 @@ export default function BillingApp() {
         }
       }
       
-      // Update local state with server IDs
-      setMenuItems(updatedItems);
+      // Re-fetch menu items from server to ensure consistency
+      await loadMenuFromServer();
 
       toast({
         title: "Menu saved",
@@ -327,6 +329,55 @@ export default function BillingApp() {
       });
     } finally {
       setIsSavingMenu(false);
+    }
+  };
+
+  const loadMenuFromServer = async () => {
+    if (!posAccountData?.account_id) return;
+    
+    try {
+      // Load menu items
+      const { data: itemsData } = await supabase.rpc('list_menu_items', {
+        p_account_id: posAccountData.account_id
+      });
+
+      const itemsResult = itemsData as any;
+      if (itemsResult?.success) {
+        const serverItems = itemsResult.data || [];
+        if (serverItems.length === 0) {
+          toast({
+            title: "No menu items found",
+            description: "No menu items found on server. Add some items to get started.",
+            variant: "default"
+          });
+          setMenuItems([]);
+        } else {
+          setMenuItems(serverItems.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            price: parseFloat(item.price),
+            category: item.category,
+            image: item.image || ""
+          })));
+        }
+      }
+
+      // Load categories
+      const { data: categoriesData } = await supabase.rpc('get_categories', {
+        p_account_id: posAccountData.account_id
+      });
+
+      const categoriesResult = categoriesData as any;
+      if (categoriesResult?.success) {
+        setCategories(categoriesResult.data || ["General"]);
+      }
+    } catch (error) {
+      console.error('Error loading menu from server:', error);
+      toast({
+        title: "Error loading menu",
+        description: "Failed to load menu from server.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -914,6 +965,20 @@ export default function BillingApp() {
               </div>
             )}
             
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-foreground">Menu Management</h2>
+              <Button 
+                onClick={loadMenuFromServer}
+                disabled={isLoadingData}
+                size="sm"
+                variant="outline"
+                className="rounded-xl"
+              >
+                <RefreshCw className={`mr-2 h-3 w-3 ${isLoadingData ? 'animate-spin' : ''}`} />
+                Reload from Server
+              </Button>
+            </div>
+            
             <MenuManager 
               items={menuItems} 
               onItemsChange={setMenuItems}
@@ -929,7 +994,17 @@ export default function BillingApp() {
                     <span className="font-medium">Remember:</span> Click "Save Menu" after making changes to save them to the server.
                   </p>
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  <Button 
+                    onClick={loadMenuFromServer}
+                    disabled={isLoadingData}
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl"
+                  >
+                    <RefreshCw className={`mr-2 h-3 w-3 ${isLoadingData ? 'animate-spin' : ''}`} />
+                    Reload
+                  </Button>
                   <Button 
                     onClick={saveMenuToServer}
                     disabled={isSavingMenu || isLoadingData}
