@@ -68,6 +68,199 @@ export type Database = {
         }
         Relationships: []
       }
+      pos_categories: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          pos_account_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          pos_account_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          pos_account_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_categories_pos_account_id_fkey"
+            columns: ["pos_account_id"]
+            isOneToOne: false
+            referencedRelation: "pos_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_menu_items: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          image: string | null
+          name: string
+          pos_account_id: string
+          price: number
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          image?: string | null
+          name: string
+          pos_account_id: string
+          price: number
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          image?: string | null
+          name?: string
+          pos_account_id?: string
+          price?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_menu_items_pos_account_id_fkey"
+            columns: ["pos_account_id"]
+            isOneToOne: false
+            referencedRelation: "pos_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_order_items: {
+        Row: {
+          id: string
+          item_name: string
+          order_id: string
+          quantity: number
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          id?: string
+          item_name: string
+          order_id: string
+          quantity: number
+          total_price: number
+          unit_price: number
+        }
+        Update: {
+          id?: string
+          item_name?: string
+          order_id?: string
+          quantity?: number
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pos_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_orders: {
+        Row: {
+          created_at: string | null
+          id: string
+          order_number: string
+          payment_method: string
+          pos_account_id: string
+          total_amount: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          order_number: string
+          payment_method: string
+          pos_account_id: string
+          total_amount: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          order_number?: string
+          payment_method?: string
+          pos_account_id?: string
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_orders_pos_account_id_fkey"
+            columns: ["pos_account_id"]
+            isOneToOne: false
+            referencedRelation: "pos_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_settings: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          email: string | null
+          fssai_number: string | null
+          gst_inclusive: boolean | null
+          id: string
+          phone: string | null
+          pos_account_id: string
+          privacy_mode: boolean | null
+          restaurant_name: string
+          tax_rate: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          fssai_number?: string | null
+          gst_inclusive?: boolean | null
+          id?: string
+          phone?: string | null
+          pos_account_id: string
+          privacy_mode?: boolean | null
+          restaurant_name: string
+          tax_rate?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          fssai_number?: string | null
+          gst_inclusive?: boolean | null
+          id?: string
+          phone?: string | null
+          pos_account_id?: string
+          privacy_mode?: boolean | null
+          restaurant_name?: string
+          tax_rate?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_settings_pos_account_id_fkey"
+            columns: ["pos_account_id"]
+            isOneToOne: true
+            referencedRelation: "pos_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pos_subscriptions: {
         Row: {
           created_at: string | null
@@ -150,6 +343,16 @@ export type Database = {
         Args: { p_password: string; p_username: string }
         Returns: Json
       }
+      create_order: {
+        Args: {
+          p_account_id: string
+          p_items: Json
+          p_order_number: string
+          p_payment_method: string
+          p_total_amount: number
+        }
+        Returns: Json
+      }
       create_pos_account: {
         Args: {
           p_license_duration_days?: number
@@ -157,6 +360,18 @@ export type Database = {
           p_pin: string
           p_restaurant_name: string
         }
+        Returns: Json
+      }
+      delete_menu_item: {
+        Args: { p_account_id: string; p_item_id: string }
+        Returns: Json
+      }
+      get_categories: {
+        Args: { p_account_id: string }
+        Returns: Json
+      }
+      get_item_sales: {
+        Args: { p_account_id: string; p_days?: number }
         Returns: Json
       }
       get_pos_accounts: {
@@ -174,9 +389,17 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      get_pos_settings: {
+        Args: { p_account_id: string }
+        Returns: Json
+      }
       hash_password: {
         Args: { password: string }
         Returns: string
+      }
+      list_menu_items: {
+        Args: { p_account_id: string }
+        Returns: Json
       }
       pos_login: {
         Args: { p_mobile_number: string; p_pin: string }
@@ -188,6 +411,35 @@ export type Database = {
       }
       update_pos_telemetry: {
         Args: { p_account_id: string; p_order_total: number }
+        Returns: Json
+      }
+      upsert_categories: {
+        Args: { p_account_id: string; p_categories: string[] }
+        Returns: Json
+      }
+      upsert_menu_item: {
+        Args: {
+          p_account_id: string
+          p_category: string
+          p_image?: string
+          p_item_id?: string
+          p_name: string
+          p_price: number
+        }
+        Returns: Json
+      }
+      upsert_pos_settings: {
+        Args: {
+          p_account_id: string
+          p_address: string
+          p_email: string
+          p_fssai_number: string
+          p_gst_inclusive: boolean
+          p_phone: string
+          p_privacy_mode: boolean
+          p_restaurant_name: string
+          p_tax_rate: number
+        }
         Returns: Json
       }
     }
