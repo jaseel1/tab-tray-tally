@@ -44,6 +44,7 @@ import { generateDailySalesPDF, generateMonthlySalesPDF, RestaurantSettings } fr
 import POSLoginScreen from "@/components/POSLoginScreen";
 import AdminLoginScreen from "@/components/AdminLoginScreen";
 import SuperAdminDashboard from "@/components/SuperAdminDashboard";
+import { DigitalMenuSettings } from "@/components/DigitalMenuSettings";
 import { supabase } from "@/integrations/supabase/client";
 
 import burgerImage from "@/assets/burger.jpg";
@@ -1278,6 +1279,14 @@ export default function BillingApp() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Digital Menu Settings */}
+            {posAccountData?.account_id && (
+              <DigitalMenuSettings 
+                accountId={posAccountData.account_id} 
+                restaurantName={posAccountData.restaurant_name}
+              />
+            )}
           </div>
         </TabsContent>
       </Tabs>
