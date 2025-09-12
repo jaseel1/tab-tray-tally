@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { getThemeById, getThemeCSSVariables } from "@/lib/themes";
+import { GridLayout, ListLayout, TableLayout, MasonryLayout } from "@/components/menu-layouts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -146,6 +147,7 @@ export default function PublicMenu() {
   }
 
   const { menu_items, settings } = menuData;
+  const currentTheme = getThemeById(menuData.theme?.theme_name || 'modern');
 
   // Filter and search logic
   const categories = ['All', ...new Set(menu_items.map(item => item.category))];
@@ -166,6 +168,29 @@ export default function PublicMenu() {
 
   const formatPrice = (price: number) => {
     return `₹${price.toFixed(0)}`;
+  };
+
+  const renderMenuLayout = (items: MenuItem[]) => {
+    if (!currentTheme) return null;
+
+    const layoutProps = {
+      items,
+      theme: currentTheme,
+      formatPrice,
+      gstInclusive: settings.gst_inclusive,
+      taxRate: settings.tax_rate,
+    };
+
+    switch (currentTheme.layout) {
+      case 'list':
+        return <ListLayout {...layoutProps} />;
+      case 'table':
+        return <TableLayout {...layoutProps} />;
+      case 'masonry':
+        return <MasonryLayout {...layoutProps} />;
+      default:
+        return <GridLayout {...layoutProps} />;
+    }
   };
 
   return (
