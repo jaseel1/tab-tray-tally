@@ -97,6 +97,39 @@ export type Database = {
           },
         ]
       }
+      pos_digital_menus: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_generated_at: string | null
+          pos_account_id: string
+          public_url_slug: string
+          qr_code_generated: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_generated_at?: string | null
+          pos_account_id: string
+          public_url_slug: string
+          qr_code_generated?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_generated_at?: string | null
+          pos_account_id?: string
+          public_url_slug?: string
+          qr_code_generated?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pos_menu_items: {
         Row: {
           category: string
@@ -137,6 +170,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pos_menu_themes: {
+        Row: {
+          active: boolean
+          created_at: string
+          custom_colors: Json | null
+          id: string
+          pos_account_id: string
+          theme_name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          custom_colors?: Json | null
+          id?: string
+          pos_account_id: string
+          theme_name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          custom_colors?: Json | null
+          id?: string
+          pos_account_id?: string
+          theme_name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       pos_order_items: {
         Row: {
@@ -366,7 +429,15 @@ export type Database = {
         Args: { p_account_id: string; p_item_id: string }
         Returns: Json
       }
+      generate_menu_slug: {
+        Args: { p_account_id: string; p_restaurant_name: string }
+        Returns: string
+      }
       get_categories: {
+        Args: { p_account_id: string }
+        Returns: Json
+      }
+      get_digital_menu_settings: {
         Args: { p_account_id: string }
         Returns: Json
       }
@@ -397,9 +468,17 @@ export type Database = {
         Args: { p_account_id: string }
         Returns: Json
       }
+      get_public_menu: {
+        Args: { p_slug: string }
+        Returns: Json
+      }
       hash_password: {
         Args: { password: string }
         Returns: string
+      }
+      initialize_digital_menu: {
+        Args: { p_account_id: string; p_restaurant_name: string }
+        Returns: Json
       }
       list_menu_items: {
         Args: { p_account_id: string }
@@ -411,6 +490,14 @@ export type Database = {
       }
       toggle_pos_account_status: {
         Args: { p_account_id: string }
+        Returns: Json
+      }
+      update_menu_theme: {
+        Args: {
+          p_account_id: string
+          p_custom_colors?: Json
+          p_theme_name: string
+        }
         Returns: Json
       }
       update_pos_telemetry: {

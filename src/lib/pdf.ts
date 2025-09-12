@@ -408,6 +408,56 @@ export const generateYearlySalesPDF = (
   return pdf;
 };
 
+// Digital Menu PDF Generation
+export const generateDigitalMenuPDF = (menuItems: any[], settings: any, theme?: any): jsPDF => {
+  const pdf = new jsPDF('portrait', 'mm', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  let yPos = 20;
+  const margin = 15;
+  
+  // Restaurant Header
+  pdf.setFontSize(24);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(settings.restaurant_name || 'Restaurant Menu', pageWidth / 2, yPos, { align: 'center' });
+  yPos += 15;
+  
+  // Group items by category
+  const groupedItems = menuItems.reduce((acc, item) => {
+    if (!acc[item.category]) acc[item.category] = [];
+    acc[item.category].push(item);
+    return acc;
+  }, {} as Record<string, any[]>);
+  
+  // Render each category
+  Object.entries(groupedItems).forEach(([category, items]: [string, any[]]) => {
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(category, margin, yPos);
+    yPos += 10;
+    
+    items.forEach(item => {
+      if (yPos > 250) {
+        pdf.addPage();
+        yPos = 20;
+      }
+      
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(item.name, margin + 5, yPos);
+      
+      const price = `₹${item.price}`;
+      const priceWidth = pdf.getTextWidth(price);
+      pdf.text(price, pageWidth - margin - priceWidth, yPos);
+      
+      yPos += 8;
+    });
+    
+    yPos += 5;
+  });
+  
+  return pdf;
+};
+
 // Generate payment method report PDF
 export const generatePaymentMethodPDF = (
   orders: Order[],
