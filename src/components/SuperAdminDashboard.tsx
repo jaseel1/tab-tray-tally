@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AccountDetailsModal } from '@/components/AccountDetailsModal';
 import { 
   Plus, 
   Settings, 
@@ -18,7 +20,11 @@ import {
   PowerOff,
   LogOut,
   Eye,
-  UserPlus
+  UserPlus,
+  Search,
+  Filter,
+  Download,
+  RefreshCw
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -50,12 +56,16 @@ interface SuperAdminDashboardProps {
 
 export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardProps) {
   const [accounts, setAccounts] = useState<POSAccount[]>([]);
+  const [filteredAccounts, setFilteredAccounts] = useState<POSAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showViewersDialog, setShowViewersDialog] = useState(false);
   const [showCreateViewerDialog, setShowCreateViewerDialog] = useState(false);
+  const [showAccountDetails, setShowAccountDetails] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [selectedAccountName, setSelectedAccountName] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [viewers, setViewers] = useState<ViewerAccount[]>([]);
   const [newAccount, setNewAccount] = useState({
     mobile_number: '',
@@ -73,16 +83,42 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
     fetchAccounts();
   }, []);
 
+  // Filter accounts based on search and status
+  useEffect(() => {
+    let filtered = accounts;
+    
+    if (searchTerm) {
+      filtered = filtered.filter(account => 
+        account.restaurant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        account.mobile_number.includes(searchTerm)
+      );
+    }
+    
+    if (statusFilter) {
+      filtered = filtered.filter(account => account.status === statusFilter);
+    }
+    
+    setFilteredAccounts(filtered);
+  }, [accounts, searchTerm, statusFilter]);
+
   const fetchAccounts = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_pos_accounts');
+      const { data, error } = await supabase.rpc('search_pos_accounts', {
+        p_search_term: '',
+        p_status: '',
+        p_limit: 100,
+        p_offset: 0
+      });
       if (error) throw error;
-      // Load viewer_count safely since it may not exist
-      const accountsWithViewers = (data || []).map((account: any) => ({
-        ...account,
-        viewer_count: account.viewer_count || 0
-      }));
-      setAccounts(accountsWithViewers);
+      
+      const result = data as any;
+      if (result.success) {
+        const accountsWithViewers = (result.data.accounts || []).map((account: any) => ({
+          ...account,
+          viewer_count: account.viewer_count || 0
+        }));
+        setAccounts(accountsWithViewers);
+      }
     } catch (error) {
       toast({
         title: 'Error',
@@ -251,6 +287,12 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
     setShowViewersDialog(true);
   };
 
+  const openAccountDetails = (accountId: string, accountName: string) => {
+    setSelectedAccountId(accountId);
+    setSelectedAccountName(accountName);
+    setShowAccountDetails(true);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-500';
@@ -302,7 +344,7 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
                 <div>
                   <p className="text-sm text-muted-foreground">Active Accounts</p>
                   <p className="text-2xl font-bold">
-                    {accounts.filter(a => a.status === 'active').length}
+                    {filteredAccounts.filter(a => a.status === 'active').length}
                   </p>
                 </div>
               </div>
@@ -316,7 +358,7 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
                 <div>
                   <p className="text-sm text-muted-foreground">Total Orders</p>
                   <p className="text-2xl font-bold">
-                    {accounts.reduce((sum, a) => sum + (a.total_orders || 0), 0)}
+                    {filteredAccounts.reduce((sum, a) => sum + (a.total_orders || 0), 0)}
                   </p>
                 </div>
               </div>
@@ -330,13 +372,50 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
                 <div>
                   <p className="text-sm text-muted-foreground">Total Revenue</p>
                   <p className="text-2xl font-bold">
-                    ₹{accounts.reduce((sum, a) => sum + Number(a.total_revenue || 0), 0).toLocaleString()}
+                    ₹{filteredAccounts.reduce((sum, a) => sum + Number(a.total_revenue || 0), 0).toLocaleString()}
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Search and Filter Controls */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row gap-4 items-center">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by restaurant name or mobile number..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="disabled">Disabled</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Button variant="outline" onClick={fetchAccounts}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+              
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredAccounts.length} of {accounts.length} accounts
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Actions */}
         <div className="flex justify-between items-center">
@@ -419,9 +498,14 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {accounts.map((account) => (
+                {filteredAccounts.map((account) => (
                   <TableRow key={account.id}>
-                    <TableCell className="font-medium">{account.restaurant_name}</TableCell>
+                    <TableCell 
+                      className="font-medium cursor-pointer text-blue-600 hover:text-blue-800"
+                      onClick={() => openAccountDetails(account.id, account.restaurant_name)}
+                    >
+                      {account.restaurant_name}
+                    </TableCell>
                     <TableCell>{account.mobile_number}</TableCell>
                     <TableCell>
                       <Badge className={`${getStatusColor(account.status)} text-white`}>
@@ -473,6 +557,14 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
             </Table>
           </CardContent>
         </Card>
+
+        {/* Account Details Modal */}
+        <AccountDetailsModal
+          accountId={selectedAccountId}
+          accountName={selectedAccountName}
+          isOpen={showAccountDetails}
+          onClose={() => setShowAccountDetails(false)}
+        />
 
         {/* Viewers Management Dialog */}
         <Dialog open={showViewersDialog} onOpenChange={setShowViewersDialog}>

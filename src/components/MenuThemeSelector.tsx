@@ -32,12 +32,18 @@ export const MenuThemeSelector: React.FC<MenuThemeSelectorProps> = ({
             fontFamily: theme.fonts.heading,
           }}
         >
-          Menu Item
+          {theme.layout.charAt(0).toUpperCase() + theme.layout.slice(1)} Layout
         </div>
-        <div
-          className="w-8 h-2 rounded"
-          style={{ backgroundColor: theme.colors.primary }}
-        />
+        <div className="flex items-center gap-1">
+          <div
+            className={`w-2 h-2 rounded ${theme.imageStyle === 'circle' ? 'rounded-full' : 'rounded-sm'}`}
+            style={{ backgroundColor: theme.colors.primary }}
+          />
+          <div
+            className="w-3 h-1 rounded"
+            style={{ backgroundColor: theme.colors.accent }}
+          />
+        </div>
       </div>
       <div className="flex items-center justify-between">
         <div
@@ -47,12 +53,19 @@ export const MenuThemeSelector: React.FC<MenuThemeSelectorProps> = ({
             fontFamily: theme.fonts.body,
           }}
         >
-          ₹120
+          {theme.itemStyle} • {theme.density}
         </div>
-        <div
-          className="w-4 h-4 rounded"
-          style={{ backgroundColor: theme.colors.accent }}
-        />
+        <Badge 
+          variant="secondary" 
+          className="text-xs px-1 py-0"
+          style={{ 
+            backgroundColor: theme.colors.secondary,
+            color: theme.colors.text,
+            fontSize: '10px'
+          }}
+        >
+          {theme.iconSize}
+        </Badge>
       </div>
     </div>
   );
@@ -76,30 +89,35 @@ export const MenuThemeSelector: React.FC<MenuThemeSelectorProps> = ({
                 {renderThemePreview(theme)}
                 
                 {/* Theme Info */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-sm">{theme.displayName}</h4>
-                    {selectedTheme === theme.id && (
-                      <Check className="h-4 w-4 text-primary" />
-                    )}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-sm">{theme.displayName}</h4>
+                      {selectedTheme === theme.id && (
+                        <Check className="h-4 w-4 text-primary" />
+                      )}
+                    </div>
+                    
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div>Layout: {theme.layout} • Style: {theme.itemStyle}</div>
+                      <div>Icons: {theme.iconSize} • Density: {theme.density}</div>
+                    </div>
+                    
+                    {/* Color Palette */}
+                    <div className="flex space-x-1">
+                      {[
+                        theme.colors.primary,
+                        theme.colors.secondary,
+                        theme.colors.accent,
+                        theme.colors.background,
+                      ].map((color, index) => (
+                        <div
+                          key={index}
+                          className="w-3 h-3 rounded-full border border-gray-200"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
                   </div>
-                  
-                  {/* Color Palette */}
-                  <div className="flex space-x-1">
-                    {[
-                      theme.colors.primary,
-                      theme.colors.secondary,
-                      theme.colors.accent,
-                      theme.colors.background,
-                    ].map((color, index) => (
-                      <div
-                        key={index}
-                        className="w-3 h-3 rounded-full border border-gray-200"
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -116,6 +134,8 @@ export const MenuThemeSelector: React.FC<MenuThemeSelectorProps> = ({
                   Selected: {MENU_THEMES.find(t => t.id === selectedTheme)?.displayName}
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1">
+                  Layout: {MENU_THEMES.find(t => t.id === selectedTheme)?.layout} • 
+                  Style: {MENU_THEMES.find(t => t.id === selectedTheme)?.itemStyle} • 
                   Font: {MENU_THEMES.find(t => t.id === selectedTheme)?.fonts.heading}
                 </p>
               </div>

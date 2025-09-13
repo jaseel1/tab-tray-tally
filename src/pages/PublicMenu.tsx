@@ -298,65 +298,7 @@ export default function PublicMenu() {
                   {category}
                 </h2>
                 
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {items.map((item) => (
-                    <Card 
-                      key={item.id}
-                      className="overflow-hidden"
-                      style={{
-                        backgroundColor: 'var(--menu-surface)',
-                        borderColor: 'var(--menu-border)',
-                        boxShadow: 'var(--menu-shadow-card)',
-                        borderRadius: 'var(--menu-border-radius)',
-                      }}
-                    >
-                      <CardContent style={{ padding: 'var(--menu-card-padding)' }}>
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <h3 
-                              className="font-semibold text-lg"
-                              style={{
-                                fontFamily: 'var(--menu-font-heading)',
-                                color: 'var(--menu-text)',
-                              }}
-                            >
-                              {item.name}
-                            </h3>
-                            
-                            <div className="mt-2 flex items-center justify-between">
-                              <span 
-                                className="text-xl font-bold"
-                                style={{ color: 'var(--menu-primary)' }}
-                              >
-                                {formatPrice(item.price)}
-                              </span>
-                              
-                              {settings.gst_inclusive && settings.tax_rate && settings.tax_rate > 0 && (
-                                <Badge 
-                                  variant="secondary"
-                                  className="text-xs"
-                                >
-                                  Incl. GST
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {item.image && (
-                            <div className="ml-4 flex-shrink-0">
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="w-16 h-16 object-cover rounded"
-                                style={{ borderRadius: 'var(--menu-border-radius)' }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                {renderMenuLayout(items)}
               </section>
             ))}
           </div>

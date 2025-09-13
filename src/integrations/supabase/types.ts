@@ -433,6 +433,22 @@ export type Database = {
         Args: { p_account_id: string; p_restaurant_name: string }
         Returns: string
       }
+      get_account_analytics: {
+        Args: { p_account_id: string; p_days?: number }
+        Returns: Json
+      }
+      get_account_full_details: {
+        Args: { p_account_id: string }
+        Returns: Json
+      }
+      get_account_menu: {
+        Args: { p_account_id: string }
+        Returns: Json
+      }
+      get_account_orders: {
+        Args: { p_account_id: string; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
       get_categories: {
         Args: { p_account_id: string }
         Returns: Json
@@ -486,6 +502,15 @@ export type Database = {
       }
       pos_login: {
         Args: { p_mobile_number: string; p_pin: string }
+        Returns: Json
+      }
+      search_pos_accounts: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search_term?: string
+          p_status?: string
+        }
         Returns: Json
       }
       toggle_pos_account_status: {
