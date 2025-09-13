@@ -94,7 +94,7 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
       );
     }
     
-    if (statusFilter) {
+    if (statusFilter && statusFilter !== "all") {
       filtered = filtered.filter(account => account.status === statusFilter);
     }
     
