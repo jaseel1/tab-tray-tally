@@ -399,7 +399,7 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="disabled">Disabled</SelectItem>
                 </SelectContent>
