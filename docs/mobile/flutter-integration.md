@@ -185,6 +185,10 @@ class OrderItem {
 
 ### 5. API Service
 
+**📖 For complete RPC function reference, see: [`FLUTTER_DEVELOPER_GUIDE.md`](./FLUTTER_DEVELOPER_GUIDE.md)**
+
+**⚡ Quick Reference: [`FLUTTER_QUICK_REFERENCE.md`](./FLUTTER_QUICK_REFERENCE.md)**
+
 ```dart
 // lib/services/api_service.dart
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -347,6 +351,46 @@ class ApiService {
       return response as Map<String, dynamic>;
     } catch (e) {
       return {'success': false, 'message': 'Error updating categories: $e'};
+    }
+  }
+  
+  // Get Complete Account Menu
+  Future<Map<String, dynamic>> getAccountMenu(String accountId) async {
+    try {
+      final response = await _supabase.rpc('get_account_menu', params: {
+        'p_account_id': accountId,
+      });
+      return response as Map<String, dynamic>;
+    } catch (e) {
+      return {'success': false, 'message': 'Error fetching menu: $e'};
+    }
+  }
+  
+  // Get Account Analytics
+  Future<Map<String, dynamic>> getAccountAnalytics(String accountId, {int days = 30}) async {
+    try {
+      final response = await _supabase.rpc('get_account_analytics', params: {
+        'p_account_id': accountId,
+        'p_days': days,
+      });
+      return response as Map<String, dynamic>;
+    } catch (e) {
+      return {'success': false, 'message': 'Error fetching analytics: $e'};
+    }
+  }
+  
+  // Get Account Orders with Pagination
+  Future<Map<String, dynamic>> getAccountOrders(
+      String accountId, {int limit = 100, int offset = 0}) async {
+    try {
+      final response = await _supabase.rpc('get_account_orders', params: {
+        'p_account_id': accountId,
+        'p_limit': limit,
+        'p_offset': offset,
+      });
+      return response as Map<String, dynamic>;
+    } catch (e) {
+      return {'success': false, 'message': 'Error fetching orders: $e'};
     }
   }
 }

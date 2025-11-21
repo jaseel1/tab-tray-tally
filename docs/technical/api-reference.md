@@ -2,9 +2,18 @@
 
 This document details all backend API functions available in the Restaurant POS System.
 
+## 🔑 API Credentials
+
+**Supabase URL**: `https://hrogkcqnpjqnjstxdaxo.supabase.co`  
+**Supabase Anon Key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhyb2drY3FucGpxbmpzdHhkYXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNTIyNDEsImV4cCI6MjA3MjcyODI0MX0.NJ6Ib0e-nqtU8CFgZRWaTilvQqvFxLP0rc70lqdZuf0`
+
+**📱 For Flutter Developers**: See [`docs/mobile/FLUTTER_DEVELOPER_GUIDE.md`](../mobile/FLUTTER_DEVELOPER_GUIDE.md) for complete integration guide.
+
 ## Overview
 
 The system uses Supabase RPC (Remote Procedure Call) functions for backend operations. All functions are called via the Supabase client and return JSON responses.
+
+**Important**: All RPC function parameters use the `p_` prefix (e.g., `p_account_id`, `p_mobile_number`).
 
 ## Authentication Functions
 
