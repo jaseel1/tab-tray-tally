@@ -441,18 +441,12 @@ export type Database = {
         Args: { p_account_id: string }
         Returns: Json
       }
-      get_account_menu: {
-        Args: { p_account_id: string }
-        Returns: Json
-      }
+      get_account_menu: { Args: { p_account_id: string }; Returns: Json }
       get_account_orders: {
         Args: { p_account_id: string; p_limit?: number; p_offset?: number }
         Returns: Json
       }
-      get_categories: {
-        Args: { p_account_id: string }
-        Returns: Json
-      }
+      get_categories: { Args: { p_account_id: string }; Returns: Json }
       get_digital_menu_settings: {
         Args: { p_account_id: string }
         Returns: Json
@@ -466,7 +460,7 @@ export type Database = {
         Returns: Json
       }
       get_pos_accounts: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           days_remaining: number
           id: string
@@ -480,26 +474,14 @@ export type Database = {
           total_revenue: number
         }[]
       }
-      get_pos_settings: {
-        Args: { p_account_id: string }
-        Returns: Json
-      }
-      get_public_menu: {
-        Args: { p_slug: string }
-        Returns: Json
-      }
-      hash_password: {
-        Args: { password: string }
-        Returns: string
-      }
+      get_pos_settings: { Args: { p_account_id: string }; Returns: Json }
+      get_public_menu: { Args: { p_slug: string }; Returns: Json }
+      hash_password: { Args: { password: string }; Returns: string }
       initialize_digital_menu: {
         Args: { p_account_id: string; p_restaurant_name: string }
         Returns: Json
       }
-      list_menu_items: {
-        Args: { p_account_id: string }
-        Returns: Json
-      }
+      list_menu_items: { Args: { p_account_id: string }; Returns: Json }
       pos_login: {
         Args: { p_mobile_number: string; p_pin: string }
         Returns: Json
