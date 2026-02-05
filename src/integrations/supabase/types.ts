@@ -425,10 +425,9 @@ export type Database = {
         }
         Returns: Json
       }
-      delete_menu_item: {
-        Args: { p_account_id: string; p_item_id: string }
-        Returns: Json
-      }
+      delete_menu_item:
+        | { Args: { p_account_id: string; p_item_id: string }; Returns: Json }
+        | { Args: { p_id: string }; Returns: Json }
       generate_menu_slug: {
         Args: { p_account_id: string; p_restaurant_name: string }
         Returns: string
