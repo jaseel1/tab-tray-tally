@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { OrderEditDialog } from '@/components/OrderEditDialog';
 import { 
   Settings, 
   Menu as MenuIcon, 
@@ -23,7 +24,8 @@ import {
   Package,
   Clock,
   Download,
-  ExternalLink
+  ExternalLink,
+  Pencil
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -85,6 +87,10 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
   const [menuData, setMenuData] = useState<MenuData | null>(null);
   const [ordersData, setOrdersData] = useState<OrdersData | null>(null);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [orderEditDialog, setOrderEditDialog] = useState<{
+    isOpen: boolean;
+    order: { id: string; order_number: string; payment_method: string; total_amount: number } | null;
+  }>({ isOpen: false, order: null });
   const { toast } = useToast();
 
   const fetchAccountDetails = async () => {
@@ -457,6 +463,7 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                           <TableHead>Items</TableHead>
                           <TableHead>Total</TableHead>
                           <TableHead>Payment</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -476,6 +483,24 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                             <TableCell className="font-semibold">{formatCurrency(order.total_amount)}</TableCell>
                             <TableCell>
                               <Badge variant="secondary">{order.payment_method}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setOrderEditDialog({
+                                  isOpen: true,
+                                  order: {
+                                    id: order.id,
+                                    order_number: order.order_number,
+                                    payment_method: order.payment_method,
+                                    total_amount: parseFloat(order.total_amount)
+                                  }
+                                })}
+                              >
+                                <Pencil className="h-4 w-4 mr-1" />
+                                Edit
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -639,6 +664,17 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
           </TabsContent>
         </Tabs>
       </DialogContent>
+
+      <OrderEditDialog
+        open={orderEditDialog.isOpen}
+        onOpenChange={(open) => setOrderEditDialog({ isOpen: open, order: orderEditDialog.order })}
+        order={orderEditDialog.order}
+        accountId={accountId}
+        isAdmin={true}
+        onSuccess={() => {
+          fetchOrdersData();
+        }}
+      />
     </Dialog>
   );
 };
