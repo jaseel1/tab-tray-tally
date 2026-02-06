@@ -34,7 +34,9 @@ import {
   Phone,
   MapPin,
   Hash,
-  RefreshCw
+  RefreshCw,
+  Pencil,
+  Lock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { MenuManager, MenuItem } from "@/components/MenuManager";
@@ -45,6 +47,7 @@ import POSLoginScreen from "@/components/POSLoginScreen";
 import AdminLoginScreen from "@/components/AdminLoginScreen";
 import SuperAdminDashboard from "@/components/SuperAdminDashboard";
 import { DigitalMenuSettings } from "@/components/DigitalMenuSettings";
+import { OrderEditDialog } from "@/components/OrderEditDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 import burgerImage from "@/assets/burger.jpg";
@@ -58,6 +61,7 @@ interface CartItem extends MenuItem {
 
 interface Order {
   id: string;
+  serverId?: string; // Server UUID for editing
   items: CartItem[];
   total: number;
   paymentMethod: string;
@@ -119,6 +123,11 @@ export default function BillingApp() {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isSavingMenu, setIsSavingMenu] = useState(false);
+  const [orderEditDialog, setOrderEditDialog] = useState<{
+    isOpen: boolean;
+    order: { id: string; order_number: string; payment_method: string; total_amount: number } | null;
+  }>({ isOpen: false, order: null });
+  const [editableOrders, setEditableOrders] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   // Load data from server when account changes
@@ -171,8 +180,24 @@ export default function BillingApp() {
       const ordersResult = ordersData as any;
       if (ordersResult?.success) {
         const serverOrders = ordersResult.data || [];
+        const editableSet = new Set<string>();
+
+        // Check editability for each order
+        for (const order of serverOrders) {
+          const { data: canEditData } = await supabase.rpc('can_edit_order', {
+            p_order_id: order.id,
+            p_account_id: posAccountData.account_id
+          });
+          const canEditResult = canEditData as any;
+          if (canEditResult?.can_edit) {
+            editableSet.add(order.id);
+          }
+        }
+        setEditableOrders(editableSet);
+
         setOrders(serverOrders.map((order: any) => ({
           id: order.order_number,
+          serverId: order.id,
           items: order.items.map((item: any) => ({
             id: `${order.id}-${item.item_name}`, // Generate ID for cart items
             name: item.item_name,
@@ -1035,45 +1060,84 @@ export default function BillingApp() {
               </Card>
             ) : (
               <div className="space-y-3">
-                {orders.map((order) => (
-                  <Card key={order.id} className="rounded-2xl shadow-md">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-semibold text-foreground">Order #{order.id}</h3>
-                        <span className="text-sm bg-success text-success-foreground px-2 py-1 rounded-full">
-                          {order.status}
-                        </span>
-                      </div>
-                      
-                       <div className="text-sm text-muted-foreground mb-2 flex justify-between items-center">
-                         <span>{new Date(order.timestamp).toLocaleDateString()} {new Date(order.timestamp).toLocaleTimeString()}</span>
-                         <Button
-                           size="sm"
-                           variant="outline"
-                           onClick={() => setReceiptPreview({ isOpen: true, order })}
-                           className="rounded-xl"
-                         >
-                           <Receipt size={14} className="mr-1" />
-                           Print
-                         </Button>
-                       </div>
-                      
-                      <div className="space-y-1 mb-3">
-                        {order.items.map((item) => (
-                          <div key={item.id} className="flex justify-between text-sm">
-                            <span className="text-foreground">{item.name} x{item.quantity}</span>
-                            <span className="text-foreground">₹{item.price * item.quantity}</span>
+                {orders.map((order) => {
+                  const isEditable = order.serverId && editableOrders.has(order.serverId);
+                  return (
+                    <Card key={order.id} className="rounded-2xl shadow-md">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="font-semibold text-foreground">Order #{order.id}</h3>
+                          <span className="text-sm bg-success text-success-foreground px-2 py-1 rounded-full">
+                            {order.status}
+                          </span>
+                        </div>
+                        
+                        <div className="text-sm text-muted-foreground mb-2 flex justify-between items-center">
+                          <span>{new Date(order.timestamp).toLocaleDateString()} {new Date(order.timestamp).toLocaleTimeString()}</span>
+                          <div className="flex gap-2">
+                            {order.serverId && userRole === 'owner' && (
+                              <Button
+                                size="sm"
+                                variant={isEditable ? "outline" : "ghost"}
+                                onClick={() => {
+                                  if (isEditable) {
+                                    setOrderEditDialog({
+                                      isOpen: true,
+                                      order: {
+                                        id: order.serverId!,
+                                        order_number: order.id,
+                                        payment_method: order.paymentMethod,
+                                        total_amount: order.total
+                                      }
+                                    });
+                                  } else {
+                                    toast({
+                                      title: "Cannot edit order",
+                                      description: "Edit time window has expired",
+                                      variant: "destructive"
+                                    });
+                                  }
+                                }}
+                                className="rounded-xl"
+                                disabled={!isEditable}
+                              >
+                                {isEditable ? (
+                                  <Pencil size={14} className="mr-1" />
+                                ) : (
+                                  <Lock size={14} className="mr-1" />
+                                )}
+                                {isEditable ? "Edit" : "Locked"}
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setReceiptPreview({ isOpen: true, order })}
+                              className="rounded-xl"
+                            >
+                              <Receipt size={14} className="mr-1" />
+                              Print
+                            </Button>
                           </div>
-                        ))}
-                      </div>
-                      
-                      <div className="flex justify-between items-center border-t pt-2">
-                        <span className="font-semibold text-foreground">Total: ₹{order.total}</span>
-                        <span className="text-sm text-muted-foreground capitalize">{order.paymentMethod}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                        </div>
+                        
+                        <div className="space-y-1 mb-3">
+                          {order.items.map((item) => (
+                            <div key={item.id} className="flex justify-between text-sm">
+                              <span className="text-foreground">{item.name} x{item.quantity}</span>
+                              <span className="text-foreground">₹{item.price * item.quantity}</span>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <div className="flex justify-between items-center border-t pt-2">
+                          <span className="font-semibold text-foreground">Total: ₹{order.total}</span>
+                          <span className="text-sm text-muted-foreground capitalize">{order.paymentMethod}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1297,6 +1361,19 @@ export default function BillingApp() {
           settings={settings}
           isOpen={receiptPreview.isOpen}
           onClose={() => setReceiptPreview({ isOpen: false, order: null })}
+        />
+      )}
+
+      {posAccountData?.account_id && (
+        <OrderEditDialog
+          open={orderEditDialog.isOpen}
+          onOpenChange={(open) => setOrderEditDialog({ isOpen: open, order: orderEditDialog.order })}
+          order={orderEditDialog.order}
+          accountId={posAccountData.account_id}
+          isAdmin={false}
+          onSuccess={() => {
+            loadServerData();
+          }}
         />
       )}
     </div>

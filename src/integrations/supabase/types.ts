@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_settings: {
+        Row: {
+          created_at: string
+          id: string
+          setting_key: string
+          setting_metadata: Json | null
+          setting_value: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          setting_key: string
+          setting_metadata?: Json | null
+          setting_value: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          setting_key?: string
+          setting_metadata?: Json | null
+          setting_value?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_users: {
         Row: {
           created_at: string | null
@@ -244,6 +271,7 @@ export type Database = {
           payment_method: string
           pos_account_id: string
           total_amount: number
+          updated_at: string | null
         }
         Insert: {
           created_at?: string | null
@@ -252,6 +280,7 @@ export type Database = {
           payment_method: string
           pos_account_id: string
           total_amount: number
+          updated_at?: string | null
         }
         Update: {
           created_at?: string | null
@@ -260,6 +289,7 @@ export type Database = {
           payment_method?: string
           pos_account_id?: string
           total_amount?: number
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -406,6 +436,10 @@ export type Database = {
         Args: { p_password: string; p_username: string }
         Returns: Json
       }
+      can_edit_order: {
+        Args: { p_account_id: string; p_order_id: string }
+        Returns: Json
+      }
       create_order: {
         Args: {
           p_account_id: string
@@ -445,6 +479,7 @@ export type Database = {
         Args: { p_account_id: string; p_limit?: number; p_offset?: number }
         Returns: Json
       }
+      get_admin_settings: { Args: never; Returns: Json }
       get_categories: { Args: { p_account_id: string }; Returns: Json }
       get_digital_menu_settings: {
         Args: { p_account_id: string }
@@ -506,8 +541,21 @@ export type Database = {
         }
         Returns: Json
       }
+      update_order_payment_method: {
+        Args: {
+          p_account_id: string
+          p_is_admin?: boolean
+          p_order_id: string
+          p_payment_method: string
+        }
+        Returns: Json
+      }
       update_pos_telemetry: {
         Args: { p_account_id: string; p_order_total: number }
+        Returns: Json
+      }
+      upsert_admin_setting: {
+        Args: { p_key: string; p_metadata?: Json; p_value: string }
         Returns: Json
       }
       upsert_categories: {

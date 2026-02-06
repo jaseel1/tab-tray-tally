@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AccountDetailsModal } from '@/components/AccountDetailsModal';
+import { AdminSettingsSection } from '@/components/AdminSettingsSection';
 import { 
   Plus, 
   Settings, 
@@ -667,6 +668,9 @@ export default function SuperAdminDashboard({ onLogout }: SuperAdminDashboardPro
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Admin Settings Section */}
+        <AdminSettingsSection />
       </div>
     </div>
   );
