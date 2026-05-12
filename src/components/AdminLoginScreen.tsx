@@ -52,7 +52,8 @@ export default function AdminLoginScreen({ onLoginSuccess, onBackToPOS }: AdminL
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-500/20 to-orange-500/20 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center">
+          <img src={biscuitposLogo} alt="BiscuitPOS" className="mx-auto mb-3 h-8 w-auto opacity-90 select-none" />
+          <div className="mx-auto mb-3 w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center">
             <Shield className="w-8 h-8 text-red-500" />
           </div>
           <CardTitle className="text-2xl font-bold text-red-600">Super Admin</CardTitle>
