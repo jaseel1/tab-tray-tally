@@ -1936,6 +1936,19 @@ export default function BillingApp() {
         />
       )}
 
+      {posAccountData?.account_id && (
+        <RecordPaymentDialog
+          open={recordPaymentDialog.open}
+          onOpenChange={(o) => setRecordPaymentDialog({ open: o, order: o ? recordPaymentDialog.order : null })}
+          accountId={posAccountData.account_id}
+          order={recordPaymentDialog.order}
+          onSuccess={() => {
+            loadServerData();
+            loadTables();
+          }}
+        />
+      )}
+
       <RenameTableDialog
         open={renameDialog.open}
         initialLabel={renameDialog.table?.label || ""}
