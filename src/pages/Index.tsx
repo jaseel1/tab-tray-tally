@@ -1051,6 +1051,13 @@ export default function BillingApp() {
             )}
 
             {(orderType !== 'dine_in' || activeTable) && (
+            <>
+            {orderType === 'dine_in' && activeTable && (
+              <div className="text-sm font-medium text-foreground bg-muted rounded-xl px-3 py-2">
+                Ordering for: {activeTable.label}
+                {activeTable.status === 'billed' && <span className="ml-2 text-info">(billed)</span>}
+              </div>
+            )}
             <div className="relative">
               <Search className="absolute left-3 top-3 text-muted-foreground" size={20} />
               <Input
