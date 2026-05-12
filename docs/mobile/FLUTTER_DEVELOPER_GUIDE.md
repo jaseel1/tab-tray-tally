@@ -1,8 +1,8 @@
-# Flutter Developer Guide - Restaurant POS System
+# Flutter Developer Guide - BiscuitPOS
 
 ## 🚀 Quick Start
 
-This guide provides everything you need to build a Flutter mobile app that integrates with the Restaurant POS System backend.
+This guide provides everything you need to build a Flutter mobile app that integrates with the BiscuitPOS backend.
 
 ## 📋 Table of Contents
 
@@ -23,8 +23,8 @@ This guide provides everything you need to build a Flutter mobile app that integ
 
 ```dart
 // Add these to your Flutter app configuration
-const String SUPABASE_URL = 'https://hrogkcqnpjqnjstxdaxo.supabase.co';
-const String SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhyb2drY3FucGpxbmpzdHhkYXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNTIyNDEsImV4cCI6MjA3MjcyODI0MX0.NJ6Ib0e-nqtU8CFgZRWaTilvQqvFxLP0rc70lqdZuf0';
+const String SUPABASE_URL = 'https://insljgsbzkwvfhoujcrj.supabase.co';
+const String SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imluc2xqZ3Niemt3dmZob3VqY3JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NjM4MjQsImV4cCI6MjA5NDEzOTgyNH0.oSZWdgDqk84c_kATtP4qvwpp7tY-0jhWmZCs9bIHkYE';
 ```
 
 **Important Notes:**
@@ -66,8 +66,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   await Supabase.initialize(
-    url: 'https://hrogkcqnpjqnjstxdaxo.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhyb2drY3FucGpxbmpzdHhkYXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNTIyNDEsImV4cCI6MjA3MjcyODI0MX0.NJ6Ib0e-nqtU8CFgZRWaTilvQqvFxLP0rc70lqdZuf0',
+    url: 'https://insljgsbzkwvfhoujcrj.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imluc2xqZ3Niemt3dmZob3VqY3JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NjM4MjQsImV4cCI6MjA5NDEzOTgyNH0.oSZWdgDqk84c_kATtP4qvwpp7tY-0jhWmZCs9bIHkYE',
   );
   
   runApp(MyApp());
@@ -1211,4 +1211,4 @@ Future<T> retryOperation<T>(
 
 **Last Updated**: 2025-01-13  
 **Backend Version**: v1.0  
-**Supabase Project**: hrogkcqnpjqnjstxdaxo
+**Supabase Project**: insljgsbzkwvfhoujcrj

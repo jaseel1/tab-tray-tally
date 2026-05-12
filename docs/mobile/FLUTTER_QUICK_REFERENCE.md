@@ -1,10 +1,10 @@
-# Flutter Quick Reference - Restaurant POS System
+# Flutter Quick Reference - BiscuitPOS
 
 ## 🔑 API Credentials
 
 ```dart
-const SUPABASE_URL = 'https://hrogkcqnpjqnjstxdaxo.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhyb2drY3FucGpxbmpzdHhkYXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNTIyNDEsImV4cCI6MjA3MjcyODI0MX0.NJ6Ib0e-nqtU8CFgZRWaTilvQqvFxLP0rc70lqdZuf0';
+const SUPABASE_URL = 'https://insljgsbzkwvfhoujcrj.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imluc2xqZ3Niemt3dmZob3VqY3JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NjM4MjQsImV4cCI6MjA5NDEzOTgyNH0.oSZWdgDqk84c_kATtP4qvwpp7tY-0jhWmZCs9bIHkYE';
 ```
 
 ---
@@ -308,7 +308,7 @@ final orderNumber = 'ORD${DateTime.now().millisecondsSinceEpoch}';
 
 ## 📞 Project Info
 
-- **Supabase Project ID**: `hrogkcqnpjqnjstxdaxo`
+- **Supabase Project ID**: `insljgsbzkwvfhoujcrj`
 - **Backend**: PostgreSQL + RLS
 - **Auth**: Custom RPC functions (no Supabase Auth)
 - **Real-time**: Supported if needed

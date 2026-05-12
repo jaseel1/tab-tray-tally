@@ -1,6 +1,6 @@
 # Flutter Mobile App Integration
 
-This guide explains how to create a Flutter mobile app that integrates with the Restaurant POS System backend for POS Owners and Viewers.
+This guide explains how to create a Flutter mobile app that integrates with the BiscuitPOS backend for POS Owners and Viewers.
 
 ## Overview
 
@@ -16,8 +16,8 @@ The Flutter app provides mobile access to core POS functionality including:
 ### Supabase Configuration
 ```dart
 // Supabase URL and API Key
-const String supabaseUrl = 'https://hrogkcqnpjqnjstxdaxo.supabase.co';
-const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhyb2drY3FucGpxbmpzdHhkYXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNTIyNDEsImV4cCI6MjA3MjcyODI0MX0.NJ6Ib0e-nqtU8CFgZRWaTilvQqvFxLP0rc70lqdZuf0';
+const String supabaseUrl = 'https://insljgsbzkwvfhoujcrj.supabase.co';
+const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imluc2xqZ3Niemt3dmZob3VqY3JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NjM4MjQsImV4cCI6MjA5NDEzOTgyNH0.oSZWdgDqk84c_kATtP4qvwpp7tY-0jhWmZCs9bIHkYE';
 ```
 
 ## Setup Instructions
@@ -52,8 +52,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   await Supabase.initialize(
-    url: 'https://hrogkcqnpjqnjstxdaxo.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhyb2drY3FucGpxbmpzdHhkYXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNTIyNDEsImV4cCI6MjA3MjcyODI0MX0.NJ6Ib0e-nqtU8CFgZRWaTilvQqvFxLP0rc70lqdZuf0',
+    url: 'https://insljgsbzkwvfhoujcrj.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imluc2xqZ3Niemt3dmZob3VqY3JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NjM4MjQsImV4cCI6MjA5NDEzOTgyNH0.oSZWdgDqk84c_kATtP4qvwpp7tY-0jhWmZCs9bIHkYE',
   );
   
   runApp(MyApp());
