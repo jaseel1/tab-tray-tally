@@ -1122,7 +1122,13 @@ export default function BillingApp() {
                     </div>
                   )}
                 </div>
-                <TableGrid tables={tables} activeTableId={activeTable?.id} onSelect={handleSelectTable} />
+                <TableGrid
+                  tables={tables}
+                  activeTableId={activeTable?.id}
+                  onSelect={handleSelectTable}
+                  canRename={userRole !== 'viewer'}
+                  onRename={(t) => setRenameDialog({ open: true, table: t })}
+                />
               </div>
             )}
 
