@@ -263,13 +263,42 @@ export type Database = {
           },
         ]
       }
+      pos_order_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          method: string
+          order_id: string
+          pos_account_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          method: string
+          order_id: string
+          pos_account_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          method?: string
+          order_id?: string
+          pos_account_id?: string
+        }
+        Relationships: []
+      }
       pos_orders: {
         Row: {
+          amount_paid: number
           created_at: string | null
           id: string
           order_number: string
           order_type: string
-          payment_method: string
+          payment_method: string | null
+          payment_status: string
           pos_account_id: string
           session_id: string | null
           table_number: number | null
@@ -277,11 +306,13 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          amount_paid?: number
           created_at?: string | null
           id?: string
           order_number: string
           order_type?: string
-          payment_method: string
+          payment_method?: string | null
+          payment_status?: string
           pos_account_id: string
           session_id?: string | null
           table_number?: number | null
@@ -289,11 +320,13 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          amount_paid?: number
           created_at?: string | null
           id?: string
           order_number?: string
           order_type?: string
-          payment_method?: string
+          payment_method?: string | null
+          payment_status?: string
           pos_account_id?: string
           session_id?: string | null
           table_number?: number | null
@@ -680,6 +713,10 @@ export type Database = {
       list_pos_viewers: { Args: { p_account_id: string }; Returns: Json }
       pos_login: {
         Args: { p_mobile_number: string; p_pin: string }
+        Returns: Json
+      }
+      record_order_payment: {
+        Args: { p_account_id: string; p_order_id: string; p_payments: Json }
         Returns: Json
       }
       rename_pos_table: {
