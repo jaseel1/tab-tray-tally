@@ -89,8 +89,38 @@ export const generateReceiptPDF = (
   }
   pdf.text(new Date(order.timestamp).toLocaleString(), margin, yPos);
   yPos += 3;
-  pdf.text(`Payment: ${order.paymentMethod.toUpperCase()}`, margin, yPos);
-  yPos += 5;
+  const ps = order.paymentStatus || (order.paymentMethod && order.paymentMethod !== 'pending' ? 'paid' : 'pending');
+  if (ps === 'pending') {
+    pdf.setFont('courier', 'bold');
+    pdf.text('** PAYMENT PENDING **', pageWidth / 2, yPos, { align: 'center' });
+    pdf.setFont('courier', 'normal');
+    yPos += 4;
+  } else if (ps === 'partial') {
+    pdf.setFont('courier', 'bold');
+    pdf.text('** PARTIAL PAYMENT **', pageWidth / 2, yPos, { align: 'center' });
+    pdf.setFont('courier', 'normal');
+    yPos += 4;
+    (order.payments || []).forEach((p) => {
+      pdf.text(`${p.method.toUpperCase()}:`, margin, yPos);
+      pdf.text(`₹${p.amount.toFixed(2)}`, pageWidth - margin, yPos, { align: 'right' });
+      yPos += 3;
+    });
+    pdf.text('Due:', margin, yPos);
+    pdf.text(`₹${(order.total - (order.amountPaid || 0)).toFixed(2)}`, pageWidth - margin, yPos, { align: 'right' });
+    yPos += 4;
+  } else if ((order.payments || []).length > 1) {
+    pdf.text('Payment:', margin, yPos);
+    yPos += 3;
+    (order.payments || []).forEach((p) => {
+      pdf.text(`  ${p.method.toUpperCase()}:`, margin, yPos);
+      pdf.text(`₹${p.amount.toFixed(2)}`, pageWidth - margin, yPos, { align: 'right' });
+      yPos += 3;
+    });
+    yPos += 2;
+  } else {
+    pdf.text(`Payment: ${(order.paymentMethod || 'CASH').toUpperCase()}`, margin, yPos);
+    yPos += 5;
+  }
   
   // Items
   order.items.forEach((item) => {
