@@ -1449,10 +1449,6 @@ export default function BillingApp() {
                   return (
                     <Card key={order.id} className="rounded-2xl shadow-md">
                       <CardContent className="p-4">
-                  const isEditable = order.serverId && editableOrders.has(order.serverId);
-                  return (
-                    <Card key={order.id} className="rounded-2xl shadow-md">
-                      <CardContent className="p-4">
                         <div className="flex justify-between items-center mb-2">
                           <h3 className="font-semibold text-foreground">Order #{order.id}</h3>
                           <span className="text-sm bg-success text-success-foreground px-2 py-1 rounded-full">
