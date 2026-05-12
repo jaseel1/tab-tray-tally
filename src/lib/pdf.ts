@@ -74,6 +74,10 @@ export const generateReceiptPDF = (
   pdf.setFontSize(8);
   pdf.text(`Order #${order.id}`, margin, yPos);
   yPos += 3;
+  if (order.tableLabel) {
+    pdf.text(`Table: ${order.tableLabel}`, margin, yPos);
+    yPos += 3;
+  }
   pdf.text(new Date(order.timestamp).toLocaleString(), margin, yPos);
   yPos += 3;
   pdf.text(`Payment: ${order.paymentMethod.toUpperCase()}`, margin, yPos);
