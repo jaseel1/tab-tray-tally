@@ -1507,6 +1507,45 @@ export default function BillingApp() {
               </CardContent>
             </Card>
 
+            {/* Table Management (owner only) */}
+            {userRole === 'owner' && (
+              <Card className="rounded-2xl shadow-md">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground">
+                    <ClipboardList className="mr-2 h-5 w-5" />
+                    Table Management
+                  </CardTitle>
+                  <CardDescription>
+                    Set 0 to disable Dine-in. Maximum 10 tables.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Number of tables (0–10)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={tableCountInput}
+                      onChange={(e) => setTableCountInput(Math.max(0, Math.min(10, parseInt(e.target.value || '0', 10))))}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <Button
+                    onClick={saveTableCount}
+                    disabled={isSavingTableCount || tableCountInput === tableCount}
+                    className="rounded-xl w-full"
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    {isSavingTableCount ? 'Saving...' : 'Save Tables'}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Currently active: <span className="font-medium text-foreground">{tableCount}</span> table{tableCount === 1 ? '' : 's'}.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* License Information */}
             <Card className="rounded-2xl shadow-md">
               <CardContent className="p-4">
