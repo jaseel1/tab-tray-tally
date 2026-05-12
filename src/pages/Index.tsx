@@ -543,22 +543,13 @@ export default function BillingApp() {
       const itemsResult = itemsData as any;
       if (itemsResult?.success) {
         const serverItems = itemsResult.data || [];
-        if (serverItems.length === 0) {
-          toast({
-            title: "No menu items found",
-            description: "No menu items found on server. Add some items to get started.",
-            variant: "default"
-          });
-          setMenuItems([]);
-        } else {
-          setMenuItems(serverItems.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            price: parseFloat(item.price),
-            category: item.category,
-            image: item.image || ""
-          })));
-        }
+        setMenuItems(serverItems.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          price: parseFloat(item.price),
+          category: item.category,
+          image: item.image || ""
+        })));
       }
 
       // Load categories
