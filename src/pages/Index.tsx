@@ -325,6 +325,7 @@ export default function BillingApp() {
     }
   };
 
+  const saveSettingsToServer = async () => {
     if (!posAccountData?.account_id || isSavingSettings) return;
     
     setIsSavingSettings(true);
