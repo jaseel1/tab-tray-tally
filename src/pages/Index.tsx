@@ -365,7 +365,10 @@ export default function BillingApp() {
 
   const handleReleaseTable = async () => {
     if (!activeTable?.session || !posAccountData?.account_id) return;
-    if (!confirm(`Release ${activeTable.label}? Any unsaved items will be discarded.`)) return;
+    const msg = activeTable.status === 'billed'
+      ? `Release ${activeTable.label}? The unpaid bill will be discarded.`
+      : `Release ${activeTable.label}? Any unsaved items will be discarded.`;
+    if (!confirm(msg)) return;
     try {
       await supabase.rpc('close_table_session', {
         p_account_id: posAccountData.account_id,
@@ -1073,7 +1076,7 @@ export default function BillingApp() {
                   </h3>
                   {activeTable && (
                     <div className="flex gap-2">
-                      {activeTable.status === 'occupied' && userRole !== 'viewer' && (
+                      {(activeTable.status === 'occupied' || activeTable.status === 'billed') && userRole !== 'viewer' && (
                         <Button size="sm" variant="ghost" className="rounded-xl text-destructive hover:text-destructive" onClick={handleReleaseTable}>
                           Release table
                         </Button>

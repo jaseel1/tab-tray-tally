@@ -1,19 +1,26 @@
-## Plan
+## Goal
 
-1. **Stop empty-cart auto-save from reopening released tables**
-   - Update the dine-in auto-save guard so it does not call `upsert_table_session` when the active table has no cart items.
-   - This prevents `setCart([])` after Release from creating/updating a session again.
+Allow the user to Release a table that is stuck in `billed` status (bill generated but payment never completed), so it can be returned to `free`. Today, Release only shows for `occupied` tables, leaving billed tables stranded — exactly what happened to Table 2.
 
-2. **Clear selected table before clearing cart during release**
-   - Keep the release flow as: close session → clear active table → clear cart → reload tables.
-   - Ensure the debounced save effect sees no active table and cannot re-save stale state.
+## Changes
 
-3. **Make table refresh safe after release/payment**
-   - Adjust table reload behavior so it does not re-select a table that has just been cleared by the user action.
-   - Payment should still free the table and show receipt as already implemented.
+**File: `src/pages/Index.tsx`**
 
-## Technical notes
+1. **Show the Release button for billed tables too.**
+   - Update the condition at line 1076 from `activeTable.status === 'occupied'` to `(activeTable.status === 'occupied' || activeTable.status === 'billed')` (still gated by `userRole !== 'viewer'`).
 
-- The current issue is caused by the auto-save effect watching `cart` and `activeTable`; after Release, `setCart([])` can still trigger a debounced `persistTableCart(activeTable.id, [])`, and the backend RPC marks the table `occupied` again.
-- Only `src/pages/Index.tsx` needs changes.
-- No database changes are required.
+2. **Update the confirm copy in `handleReleaseTable`** (line 368) so a billed-table release reads naturally, e.g. "Release {label}? The unpaid bill will be discarded." when status is `billed`, and keep the existing message for `occupied`.
+
+3. **Keep the underlying RPC the same** — `close_table_session` already frees the table and clears `current_session_id`, which works for both `occupied` and `billed` sessions.
+
+## Out of scope
+
+- No DB / RPC / schema changes.
+- No change to the payment flow itself (Cash/Card/UPI still auto-frees the table as it does today).
+- Not restoring the cart on reopening a billed table (that was option 2/3, not selected).
+
+## Manual verification
+
+- Pick Table 2 (currently `billed`) → "Release table" button appears → click → confirm → toast "Table released" → Table 2 turns `free`.
+- An `occupied` table still releases as before.
+- Viewer role still does not see the Release button.
