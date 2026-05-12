@@ -1617,8 +1617,14 @@ export default function BillingApp() {
                         </div>
                         
                         <div className="flex justify-between items-center border-t pt-2">
-                          <span className="font-semibold text-foreground">Total: ₹{order.total}</span>
-                          <span className="text-sm text-muted-foreground capitalize">{order.paymentMethod}</span>
+                          <span className="font-semibold text-foreground">Total: ₹{order.total.toFixed(2)}</span>
+                          {ps === 'paid' ? (
+                            <span className="text-sm text-muted-foreground capitalize">{order.paymentMethod}</span>
+                          ) : (
+                            <span className="text-sm text-warning font-medium">
+                              Paid ₹{(order.amountPaid || 0).toFixed(2)} / ₹{order.total.toFixed(2)}
+                            </span>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
