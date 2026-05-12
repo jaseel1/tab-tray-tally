@@ -1189,6 +1189,8 @@ export default function BillingApp() {
                 </CardContent>
               </Card>
             )}
+            </>
+            )}
           </div>
         </TabsContent>
 
