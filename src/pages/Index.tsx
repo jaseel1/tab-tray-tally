@@ -360,18 +360,18 @@ export default function BillingApp() {
     setCart(items);
   };
 
-  const handleMarkPaid = async () => {
+  const handleReleaseTable = async () => {
     if (!activeTable?.session || !posAccountData?.account_id) return;
+    if (!confirm(`Release ${activeTable.label}? Any unsaved items will be discarded.`)) return;
     try {
       await supabase.rpc('close_table_session', {
         p_account_id: posAccountData.account_id,
         p_session_id: activeTable.session.id,
       });
-      toast({ title: 'Table cleared', description: `${activeTable.label} is now free.` });
+      toast({ title: 'Table released', description: `${activeTable.label} is now free.` });
       setActiveTable(null);
       setCart([]);
       await loadTables();
-      await loadServerData();
     } catch (e) {
       console.error(e);
     }
@@ -399,15 +399,17 @@ export default function BillingApp() {
           timestamp: new Date(),
           status: 'Completed',
         };
+        // Auto-free the table after payment
+        await supabase.rpc('close_table_session', {
+          p_account_id: posAccountData.account_id,
+          p_session_id: sessionId,
+        });
         setReceiptPreview({ isOpen: true, order: newOrder });
-        toast({ title: 'Bill generated', description: `${activeTable.label} — awaiting payment.` });
+        toast({ title: 'Payment received', description: `${activeTable.label} is now free.` });
         setCart([]);
+        setActiveTable(null);
         await loadTables();
         await loadServerData();
-        const { data: refresh } = await supabase.rpc('list_pos_tables', { p_account_id: posAccountData.account_id });
-        const tablesNow = ((refresh as any)?.data?.tables || []) as PosTable[];
-        const refreshed = tablesNow.find(t => t.id === activeTable.id) || null;
-        setActiveTable(refreshed);
       } else {
         toast({ title: 'Error', description: res?.message || 'Failed to bill', variant: 'destructive' });
       }
@@ -1067,17 +1069,19 @@ export default function BillingApp() {
                     {activeTable ? `Active: ${activeTable.label}` : 'Select a table'}
                   </h3>
                   {activeTable && (
-                    <Button size="sm" variant="ghost" className="rounded-xl" onClick={() => { setActiveTable(null); setCart([]); }}>
-                      Change table
-                    </Button>
+                    <div className="flex gap-2">
+                      {activeTable.status === 'occupied' && userRole !== 'viewer' && (
+                        <Button size="sm" variant="ghost" className="rounded-xl text-destructive hover:text-destructive" onClick={handleReleaseTable}>
+                          Release table
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="rounded-xl" onClick={() => { setActiveTable(null); setCart([]); }}>
+                        Change table
+                      </Button>
+                    </div>
                   )}
                 </div>
                 <TableGrid tables={tables} activeTableId={activeTable?.id} onSelect={handleSelectTable} />
-                {activeTable?.status === 'billed' && (
-                  <Button onClick={handleMarkPaid} className="w-full rounded-xl bg-success hover:bg-success/90 text-success-foreground">
-                    Mark Paid &amp; Free Table
-                  </Button>
-                )}
               </div>
             )}
 
