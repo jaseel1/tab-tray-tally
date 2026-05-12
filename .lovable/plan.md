@@ -1,37 +1,29 @@
-# Finish Pending Updates
+## Move Table Rename to Settings
 
-Backend + foundational components are already done. This plan covers the remaining wiring and UI polish.
+### Problem
+Table rename currently lives inside the billing screen as pencil icons on each `TableGrid` card. Users want this moved to the Settings tab.
 
-## 1. Wire Rename Table Dialog
-- In `TableGrid.tsx`, add local state for `renameTarget` and render `<RenameTableDialog>` controlled by the pencil icon click.
-- On success, call `rename_pos_table` RPC and refresh tables list.
-- Use `label` (fallback "Table N") in: table cards, cart header, table picker dropdown, receipt, and PDF.
+### Solution
+Add a "Table Names" list inside the existing **Table Management** card in Settings, and remove the rename affordance from `TableGrid`.
 
-## 2. Popular Items Row
-- New `src/components/PopularItems.tsx`.
-- Compute frequency client-side from `orders` (last 30 days, top 6 by count).
-- Render as a horizontal pinned chip row above category tabs on the billing screen.
-- Hide when fewer than 3 distinct items exist or when `privacyMode` is on.
-- Tapping a chip adds that item to the cart.
+### Changes
 
-## 3. Orders Filter + Sort
-- In `ReportsSection.tsx` (orders list area), add:
-  - Segmented filter: All / Dine-in / Parcel / Takeaway (uses `order_type`).
-  - Sort dropdown: Newest, Oldest, Highest amount, Lowest amount.
-- Pure client-side filtering/sorting over loaded `orders`.
+1. **TableGrid.tsx** — Remove rename UI
+   - Remove `onRename` and `canRename` props.
+   - Remove the pencil icon button and its wrapper.
+   - Keep displaying `label` (fallback to `Table N`) because other parts of the app still rely on it.
 
-## 4. Mobile UI Polish
-- New `src/components/MobileBottomNav.tsx`: fixed bottom tab bar (Menu, Tables, Orders, Reports) shown when `useIsMobile()`.
-- New `src/components/MobileCartSheet.tsx`: cart becomes a slide-up Sheet with a floating "View Cart (n) — ₹total" button.
-- Sticky category tabs under the search bar on mobile.
-- Larger tap targets (min h-11) for menu item cards and quantity buttons.
-- Full-width segmented order-type toggle on mobile.
-- Hide desktop sidebar/cart panel at `< md`.
+2. **Index.tsx — Settings tab** — Add inline table rename list
+   - Inside the existing **Table Management** `Card` (around line 1629), below the "Save Tables" button and table count text, add a list of all current tables.
+   - Each row shows:
+     - Table number + current label
+     - A small **Rename** button (or pencil icon) that opens the existing `RenameTableDialog`.
+   - Keep reusing the existing `renameDialog` state and `handleRenameTable` function — no new backend needed.
 
-## Files
-- Edit: `src/components/TableGrid.tsx`, `src/pages/Index.tsx`, `src/components/ReportsSection.tsx`, `src/components/ReceiptPreview.tsx`, `src/lib/pdf.ts`
-- Create: `src/components/PopularItems.tsx`, `src/components/MobileBottomNav.tsx`, `src/components/MobileCartSheet.tsx`
+3. **Index.tsx — Billing tab** — Clean up rename wiring
+   - Remove `onRename` and `canRename` from the `<TableGrid>` usage in the billing tab (around line 1125).
+   - Keep `RenameTableDialog` rendered at the bottom of the component; it will now be triggered only from Settings.
 
-## Out of Scope
-- Server-side popularity aggregation (kept client-side).
-- Changes to dine-in payment flow or Flutter docs (already updated).
+### Result
+- Billing screen table cards are cleaner (no pencil icons).
+- Owners can rename tables in Settings > Table Management in one consolidated place.
