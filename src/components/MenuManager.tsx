@@ -33,13 +33,37 @@ export function MenuManager({ items, onItemsChange, categories, onCategoriesChan
     category: '',
     image: ''
   });
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
   const { toast } = useToast();
-
-  // Categories are now passed as props
 
   const resetForm = () => {
     setFormData({ name: '', price: '', category: categories[0] || '', image: '' });
     setEditingItem(null);
+    setIsAddingCategory(false);
+    setNewCategoryName('');
+  };
+
+  const confirmNewCategory = () => {
+    const trimmed = newCategoryName.trim();
+    if (!trimmed) {
+      toast({ title: 'Category name required', variant: 'destructive' });
+      return;
+    }
+    const exists = categories.some(c => c.toLowerCase() === trimmed.toLowerCase());
+    const finalName = exists
+      ? categories.find(c => c.toLowerCase() === trimmed.toLowerCase())!
+      : trimmed;
+    if (!exists) {
+      onCategoriesChange([...categories, finalName]);
+    }
+    setFormData(prev => ({ ...prev, category: finalName }));
+    setIsAddingCategory(false);
+    setNewCategoryName('');
+    toast({
+      title: exists ? 'Category selected' : 'Category added',
+      description: exists ? `"${finalName}" already exists.` : `"${finalName}" will be saved with the menu.`,
+    });
   };
 
   const openAddDialog = () => {
