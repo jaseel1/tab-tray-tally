@@ -167,6 +167,7 @@ export function ReceiptPreview({ order, settings, isOpen, onClose }: ReceiptPrev
             <div className="text-center mt-4 text-sm text-muted-foreground">
               <p>Thank you for your visit!</p>
               <p>Please visit again</p>
+              <p className="mt-2 text-[10px] tracking-wide">Powered by BiscuitPOS.com</p>
             </div>
           </CardContent>
         </Card>

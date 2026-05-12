@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import biscuitposLogo from "@/assets/biscuitpos-logo.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1000,7 +1001,7 @@ export default function BillingApp() {
           <div className="space-y-4">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Restaurant POS</h1>
+            <img src={biscuitposLogo} alt="BiscuitPOS" className="h-9 mb-2 -ml-1 select-none" />
             <p className="text-muted-foreground">
               {userRole === 'viewer' && <span className="text-blue-600 font-medium">[View-Only] </span>}
               Manage your restaurant operations

@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Smartphone, Lock } from 'lucide-react';
+import { Loader2, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import biscuitposLogo from '@/assets/biscuitpos-logo.png';
 
 interface POSLoginScreenProps {
   onLoginSuccess: (accountData: any) => void;
@@ -50,10 +51,8 @@ export default function POSLoginScreen({ onLoginSuccess }: POSLoginScreenProps) 
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/20 to-secondary/20 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-            <Smartphone className="w-8 h-8 text-primary" />
-          </div>
-          <CardTitle className="text-2xl font-bold">POS Login</CardTitle>
+          <img src={biscuitposLogo} alt="BiscuitPOS" className="mx-auto mb-3 h-12 w-auto select-none" />
+          <CardTitle className="text-xl font-semibold">Sign in to BiscuitPOS</CardTitle>
           <p className="text-muted-foreground">Enter your mobile number and PIN</p>
         </CardHeader>
         <CardContent>
