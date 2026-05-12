@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import PublicMenu from "./pages/PublicMenu";
+import FlutterDocs from "./pages/FlutterDocs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -18,6 +19,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/menu/:slug" element={<PublicMenu />} />
+          <Route path="/flutter-docs" element={<FlutterDocs />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
