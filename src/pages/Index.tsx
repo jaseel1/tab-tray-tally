@@ -50,6 +50,7 @@ import { DigitalMenuSettings } from "@/components/DigitalMenuSettings";
 import { OrderEditDialog } from "@/components/OrderEditDialog";
 import { TableGrid, PosTable } from "@/components/TableGrid";
 import { RenameTableDialog } from "@/components/RenameTableDialog";
+import { PopularItems } from "@/components/PopularItems";
 import { supabase } from "@/integrations/supabase/client";
 
 import burgerImage from "@/assets/burger.jpg";
@@ -1081,7 +1082,7 @@ export default function BillingApp() {
                   variant={orderType === 'dine_in' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => { setOrderType('dine_in'); }}
-                  className="flex-1 rounded-xl"
+                  className="flex-1 h-10 rounded-xl"
                 >
                   Dine-in
                 </Button>
@@ -1095,7 +1096,7 @@ export default function BillingApp() {
                 variant={orderType === 'parcel' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => { setOrderType('parcel'); setActiveTable(null); setCart([]); }}
-                className="flex-1 rounded-xl"
+                className="flex-1 h-10 rounded-xl"
               >
                 Parcel
               </Button>
@@ -1121,7 +1122,13 @@ export default function BillingApp() {
                     </div>
                   )}
                 </div>
-                <TableGrid tables={tables} activeTableId={activeTable?.id} onSelect={handleSelectTable} />
+                <TableGrid
+                  tables={tables}
+                  activeTableId={activeTable?.id}
+                  onSelect={handleSelectTable}
+                  canRename={userRole !== 'viewer'}
+                  onRename={(t) => setRenameDialog({ open: true, table: t })}
+                />
               </div>
             )}
 
@@ -1133,13 +1140,21 @@ export default function BillingApp() {
                 {activeTable.status === 'billed' && <span className="ml-2 text-info">(billed)</span>}
               </div>
             )}
-            <div className="relative">
-              <Search className="absolute left-3 top-3 text-muted-foreground" size={20} />
-              <Input
-                placeholder="Search items..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 rounded-2xl border-border"
+            <div className="sticky top-0 z-10 bg-gradient-surface pt-1 pb-2 -mx-1 px-1 space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 text-muted-foreground" size={20} />
+                <Input
+                  placeholder="Search items..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-11 rounded-2xl border-border"
+                />
+              </div>
+              <PopularItems
+                orders={orders}
+                menuItems={menuItems}
+                onPick={addToCart}
+                hidden={privacyMode || !!searchTerm}
               />
             </div>
             
@@ -1180,7 +1195,7 @@ export default function BillingApp() {
                       <Button
                         size="sm"
                         onClick={() => addToCart(item)}
-                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+                        className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
                       >
                         <Plus size={16} className="mr-1" />
                         Add
@@ -1199,6 +1214,11 @@ export default function BillingApp() {
                     <h3 className="font-bold text-lg flex items-center text-foreground">
                       <ShoppingCart className="mr-2" size={20} />
                       Cart
+                      {orderType === 'dine_in' && activeTable && (
+                        <span className="ml-2 text-sm font-medium text-muted-foreground">
+                          • {activeTable.label || `Table ${activeTable.table_number}`}
+                        </span>
+                      )}
                     </h3>
                     <Button 
                       variant="outline" 
@@ -1367,8 +1387,44 @@ export default function BillingApp() {
         {/* Orders History */}
         <TabsContent value="orders">
           <div className="space-y-4">
-            <h2 className="text-xl font-bold text-foreground mb-4">Order History</h2>
-            
+            <h2 className="text-xl font-bold text-foreground mb-2">Order History</h2>
+
+            {orders.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex gap-1 bg-card p-1 rounded-2xl shadow-sm overflow-x-auto">
+                  {([
+                    ['all', 'All'],
+                    ['dine_in', 'Dine-in'],
+                    ['parcel', 'Parcel'],
+                    ['takeaway', 'Takeaway'],
+                  ] as const).map(([val, label]) => (
+                    <Button
+                      key={val}
+                      variant={orderTypeFilter === val ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setOrderTypeFilter(val)}
+                      className="flex-1 rounded-xl text-xs whitespace-nowrap"
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex justify-end">
+                  <Select value={orderSort} onValueChange={(v) => setOrderSort(v as typeof orderSort)}>
+                    <SelectTrigger className="w-40 h-9 rounded-xl text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">Newest first</SelectItem>
+                      <SelectItem value="oldest">Oldest first</SelectItem>
+                      <SelectItem value="high">Highest amount</SelectItem>
+                      <SelectItem value="low">Lowest amount</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
             {orders.length === 0 ? (
               <Card className="rounded-2xl shadow-md">
                 <CardContent className="p-8 text-center">
@@ -1378,16 +1434,35 @@ export default function BillingApp() {
               </Card>
             ) : (
               <div className="space-y-3">
-                {orders.map((order) => {
+                {orders
+                  .filter((o) => orderTypeFilter === 'all' ? true : (o.orderType || 'takeaway') === orderTypeFilter)
+                  .slice()
+                  .sort((a, b) => {
+                    if (orderSort === 'high') return b.total - a.total;
+                    if (orderSort === 'low') return a.total - b.total;
+                    const ta = new Date(a.timestamp).getTime();
+                    const tb = new Date(b.timestamp).getTime();
+                    return orderSort === 'oldest' ? ta - tb : tb - ta;
+                  })
+                  .map((order) => {
                   const isEditable = order.serverId && editableOrders.has(order.serverId);
                   return (
                     <Card key={order.id} className="rounded-2xl shadow-md">
                       <CardContent className="p-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <h3 className="font-semibold text-foreground">Order #{order.id}</h3>
-                          <span className="text-sm bg-success text-success-foreground px-2 py-1 rounded-full">
-                            {order.status}
-                          </span>
+                        <div className="flex justify-between items-center mb-2 gap-2">
+                          <h3 className="font-semibold text-foreground truncate">Order #{order.id}</h3>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {order.orderType && (
+                              <Badge variant="outline" className="text-[10px] capitalize">
+                                {order.orderType === 'dine_in'
+                                  ? (order.tableLabel || (order.tableNumber ? `T${order.tableNumber}` : 'Dine-in'))
+                                  : order.orderType}
+                              </Badge>
+                            )}
+                            <span className="text-xs bg-success text-success-foreground px-2 py-0.5 rounded-full">
+                              {order.status}
+                            </span>
+                          </div>
                         </div>
                         
                         <div className="text-sm text-muted-foreground mb-2 flex justify-between items-center">
@@ -1733,6 +1808,16 @@ export default function BillingApp() {
           }}
         />
       )}
+
+      <RenameTableDialog
+        open={renameDialog.open}
+        initialLabel={renameDialog.table?.label || ""}
+        defaultLabel={renameDialog.table ? `Table ${renameDialog.table.table_number}` : "Table"}
+        onClose={() => setRenameDialog({ open: false, table: null })}
+        onSave={async (label) => {
+          if (renameDialog.table) await handleRenameTable(renameDialog.table, label);
+        }}
+      />
     </div>
   );
 }
