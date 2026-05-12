@@ -1053,14 +1053,11 @@ export default function BillingApp() {
                   Dine-in
                 </Button>
               )}
-              <Button
-                variant={orderType === 'takeaway' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => { setOrderType('takeaway'); setActiveTable(null); setCart([]); }}
-                className="flex-1 rounded-xl"
-              >
-                Takeaway
-              </Button>
+              {tableCount === 0 && (
+                <div className="flex-1 text-center text-xs text-muted-foreground py-2 px-3">
+                  Enable tables in Settings to use Dine-in
+                </div>
+              )}
               <Button
                 variant={orderType === 'parcel' ? 'default' : 'ghost'}
                 size="sm"
