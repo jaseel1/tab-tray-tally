@@ -964,17 +964,17 @@ export default function BillingApp() {
             <Receipt size={20} />
             <span className="text-xs mt-1">Bill</span>
           </TabsTrigger>
-          <TabsTrigger value="reports" className="flex flex-col items-center p-2 rounded-xl">
-            <BarChart3 size={20} />
-            <span className="text-xs mt-1">Reports</span>
+          <TabsTrigger value="orders" className="flex flex-col items-center p-2 rounded-xl">
+            <ClipboardList size={20} />
+            <span className="text-xs mt-1">Orders</span>
           </TabsTrigger>
           <TabsTrigger value="menu" className="flex flex-col items-center p-2 rounded-xl">
             <Menu size={20} />
             <span className="text-xs mt-1">Menu</span>
           </TabsTrigger>
-          <TabsTrigger value="orders" className="flex flex-col items-center p-2 rounded-xl">
-            <ClipboardList size={20} />
-            <span className="text-xs mt-1">Orders</span>
+          <TabsTrigger value="reports" className="flex flex-col items-center p-2 rounded-xl">
+            <BarChart3 size={20} />
+            <span className="text-xs mt-1">Reports</span>
           </TabsTrigger>
           <TabsTrigger value="settings" className={`flex flex-col items-center p-2 rounded-xl ${userRole === 'viewer' ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={userRole === 'viewer'}>
             <Settings size={20} />
@@ -1463,17 +1463,22 @@ export default function BillingApp() {
                     ['pending', `Pending${(() => { const n = orders.filter(o => o.paymentStatus !== 'paid').length; return n ? ` (${n})` : ''; })()}`],
                     ['paid', 'Paid'],
                     ['all', 'All'],
-                  ] as const).map(([val, label]) => (
-                    <Button
-                      key={val}
-                      variant={paymentStatusFilter === val ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setPaymentStatusFilter(val as any)}
-                      className="flex-1 rounded-xl text-xs whitespace-nowrap"
-                    >
-                      {label}
-                    </Button>
-                  ))}
+                  ] as const).map(([val, label]) => {
+                    const isPending = val === 'pending';
+                    const pendingCount = orders.filter(o => o.paymentStatus !== 'paid').length;
+                    const highlight = isPending && pendingCount > 0 && paymentStatusFilter !== 'pending';
+                    return (
+                      <Button
+                        key={val}
+                        variant={paymentStatusFilter === val ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => setPaymentStatusFilter(val as any)}
+                        className={`flex-1 rounded-xl text-xs whitespace-nowrap ${highlight ? 'text-destructive font-semibold' : ''}`}
+                      >
+                        {label}
+                      </Button>
+                    );
+                  })}
                 </div>
                 <div className="flex justify-end">
                   <Select value={orderSort} onValueChange={(v) => setOrderSort(v as typeof orderSort)}>
@@ -1521,12 +1526,10 @@ export default function BillingApp() {
                   const ps = order.paymentStatus || 'pending';
                   const psStyle = ps === 'paid'
                     ? 'bg-success text-success-foreground'
-                    : ps === 'partial'
-                      ? 'bg-info text-info-foreground'
-                      : 'bg-warning text-warning-foreground';
+                    : 'bg-destructive text-destructive-foreground';
                   const cardClass = ps === 'paid'
                     ? 'rounded-2xl shadow-md'
-                    : 'rounded-2xl shadow-md border-l-4 border-l-warning';
+                    : 'rounded-2xl shadow-md border-l-4 border-l-destructive bg-destructive/5';
                   return (
                     <Card key={order.id} className={cardClass}>
                       <CardContent className="p-4">

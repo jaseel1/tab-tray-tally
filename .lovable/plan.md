@@ -1,27 +1,23 @@
-## Redesign Record Payment Dialog
+## Highlight pending payments + swap Reports/Orders tabs
 
-Make the common case (single payment method) one-tap, hide split UI behind an opt-in, and show table number for dine-in bills.
+### 1. Pending payment in red
 
-### New flow
+In `src/pages/Index.tsx` order list rendering (around line 1521–1545):
 
-1. Header shows bill number, order type, and table label (e.g. `Bill #A12 · Dine-in · Table 5`).
-2. Totals strip (Total / Paid / Due) stays at top.
-3. Default view — three large method buttons in a row: **UPI**, **Cash**, **Card** (UPI first since it's most common). Tapping one auto-fills the full Due into that method and immediately shows a single confirm button **"Mark ₹X paid via UPI"**. No amount inputs visible.
-4. Below the method buttons: a small text link **"Split across methods"** that toggles the split view.
-5. Split view (only when toggled): the existing per-method amount inputs with "Due" buttons, running total, and **Save Payment** action. A back link returns to the simple view.
-6. Cancel always visible.
+- Treat both `pending` and `partial` as "payment outstanding" → render in red (destructive).
+- `psStyle` (status pill): change non-paid branches to `bg-destructive text-destructive-foreground` (drop the warning/info split).
+- `cardClass`: change unpaid border to `border-l-destructive` (was `border-l-warning`), and add a subtle `bg-destructive/5` tint so the whole card reads red at a glance.
+- Pending count badge in the filter button (line 1463) gets `text-destructive` when count > 0.
+- "Record Payment" action button keeps green (positive action) — only the status indicators turn red.
 
-### Table number
+### 2. Swap Reports and Orders in the top menu
 
-- Extend `PendingOrderInfo` with optional `order_type` and `table_label` (or `table_number`).
-- Populate from `order.orderType` and `order.tableNumber` / table label at both call sites in `src/pages/Index.tsx` (Orders tab button + PostBillDialog handoff).
-- Render in the dialog header subtitle.
+In `src/pages/Index.tsx` `TabsList` (lines 958–983), reorder triggers so the sequence becomes: Home, Bill, **Orders**, Menu, **Reports**, Settings (Orders moves to slot 3, Reports moves to slot 5). No changes to `TabsContent` blocks or routing — only the trigger order changes.
 
 ### Files
 
-- `src/components/RecordPaymentDialog.tsx` — redesign UI: add `mode` state (`"quick" | "split"`), default `"quick"`; render method picker → single confirm button; keep existing split UI under the toggle; show table/order-type in header.
-- `src/pages/Index.tsx` — pass `order_type` and table label into both `setRecordPaymentDialog({ order: … })` calls.
+- `src/pages/Index.tsx` — only.
 
 ### Out of scope
 
-No schema, RPC, or reports changes. Quick mode just calls the same `record_order_payment` RPC with one entry equal to Due.
+No schema, no other tabs' content, no Reports component changes.
