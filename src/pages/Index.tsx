@@ -1978,6 +1978,8 @@ export default function BillingApp() {
               order_number: synced.id,
               total_amount: synced.total,
               amount_paid: synced.amountPaid || 0,
+              order_type: synced.orderType,
+              table_number: synced.tableNumber,
             },
           });
           setPostBillOrder(null);
