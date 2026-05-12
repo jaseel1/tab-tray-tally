@@ -29,7 +29,7 @@ export function PopularItems({ orders, menuItems, onPick, hidden }: PopularItems
     return ranked;
   }, [orders, menuItems, hidden]);
 
-  if (hidden || top.length < 3) return null;
+  if (hidden || top.length < 1) return null;
 
   return (
     <div className="space-y-2">
