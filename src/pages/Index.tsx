@@ -1513,8 +1513,17 @@ export default function BillingApp() {
                   })
                   .map((order) => {
                   const isEditable = order.serverId && editableOrders.has(order.serverId);
+                  const ps = order.paymentStatus || 'pending';
+                  const psStyle = ps === 'paid'
+                    ? 'bg-success text-success-foreground'
+                    : ps === 'partial'
+                      ? 'bg-info text-info-foreground'
+                      : 'bg-warning text-warning-foreground';
+                  const cardClass = ps === 'paid'
+                    ? 'rounded-2xl shadow-md'
+                    : 'rounded-2xl shadow-md border-l-4 border-l-warning';
                   return (
-                    <Card key={order.id} className="rounded-2xl shadow-md">
+                    <Card key={order.id} className={cardClass}>
                       <CardContent className="p-4">
                         <div className="flex justify-between items-center mb-2 gap-2">
                           <h3 className="font-semibold text-foreground truncate">Order #{order.id}</h3>
@@ -1526,8 +1535,8 @@ export default function BillingApp() {
                                   : order.orderType}
                               </Badge>
                             )}
-                            <span className="text-xs bg-success text-success-foreground px-2 py-0.5 rounded-full">
-                              {order.status}
+                            <span className={`text-xs ${psStyle} px-2 py-0.5 rounded-full capitalize`}>
+                              {ps}
                             </span>
                           </div>
                         </div>
@@ -1578,6 +1587,23 @@ export default function BillingApp() {
                               <Receipt size={14} className="mr-1" />
                               Print
                             </Button>
+                            {ps !== 'paid' && order.serverId && userRole !== 'viewer' && (
+                              <Button
+                                size="sm"
+                                onClick={() => setRecordPaymentDialog({
+                                  open: true,
+                                  order: {
+                                    id: order.serverId!,
+                                    order_number: order.id,
+                                    total_amount: order.total,
+                                    amount_paid: order.amountPaid || 0,
+                                  },
+                                })}
+                                className="rounded-xl bg-success hover:bg-success/90 text-success-foreground"
+                              >
+                                Record Payment
+                              </Button>
+                            )}
                           </div>
                         </div>
                         
