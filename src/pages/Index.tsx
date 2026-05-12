@@ -1463,17 +1463,22 @@ export default function BillingApp() {
                     ['pending', `Pending${(() => { const n = orders.filter(o => o.paymentStatus !== 'paid').length; return n ? ` (${n})` : ''; })()}`],
                     ['paid', 'Paid'],
                     ['all', 'All'],
-                  ] as const).map(([val, label]) => (
-                    <Button
-                      key={val}
-                      variant={paymentStatusFilter === val ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setPaymentStatusFilter(val as any)}
-                      className="flex-1 rounded-xl text-xs whitespace-nowrap"
-                    >
-                      {label}
-                    </Button>
-                  ))}
+                  ] as const).map(([val, label]) => {
+                    const isPending = val === 'pending';
+                    const pendingCount = orders.filter(o => o.paymentStatus !== 'paid').length;
+                    const highlight = isPending && pendingCount > 0 && paymentStatusFilter !== 'pending';
+                    return (
+                      <Button
+                        key={val}
+                        variant={paymentStatusFilter === val ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => setPaymentStatusFilter(val as any)}
+                        className={`flex-1 rounded-xl text-xs whitespace-nowrap ${highlight ? 'text-destructive font-semibold' : ''}`}
+                      >
+                        {label}
+                      </Button>
+                    );
+                  })}
                 </div>
                 <div className="flex justify-end">
                   <Select value={orderSort} onValueChange={(v) => setOrderSort(v as typeof orderSort)}>
