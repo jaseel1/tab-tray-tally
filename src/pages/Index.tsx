@@ -335,6 +335,45 @@ export default function BillingApp() {
     }
   };
 
+  const generateTableBill = async (sessionId: string, paymentMethod: string) => {
+    if (!posAccountData?.account_id || !activeTable) return;
+    try {
+      const { data } = await supabase.rpc('generate_table_bill', {
+        p_account_id: posAccountData.account_id,
+        p_session_id: sessionId,
+        p_payment_method: paymentMethod,
+      });
+      const res = data as any;
+      if (res?.success) {
+        const sub = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+        const totalAmt = settings.gstInclusive || settings.taxRate === 0
+          ? sub
+          : sub + (sub * settings.taxRate) / 100;
+        const newOrder: Order = {
+          id: res.order_number,
+          items: [...cart],
+          total: totalAmt,
+          paymentMethod,
+          timestamp: new Date(),
+          status: 'Completed',
+        };
+        setReceiptPreview({ isOpen: true, order: newOrder });
+        toast({ title: 'Bill generated', description: `${activeTable.label} — awaiting payment.` });
+        setCart([]);
+        await loadTables();
+        await loadServerData();
+        const { data: refresh } = await supabase.rpc('list_pos_tables', { p_account_id: posAccountData.account_id });
+        const tablesNow = ((refresh as any)?.data?.tables || []) as PosTable[];
+        const refreshed = tablesNow.find(t => t.id === activeTable.id) || null;
+        setActiveTable(refreshed);
+      } else {
+        toast({ title: 'Error', description: res?.message || 'Failed to bill', variant: 'destructive' });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const saveSettingsToServer = async () => {
     if (!posAccountData?.account_id || isSavingSettings) return;
     
