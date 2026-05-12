@@ -1201,33 +1201,44 @@ export default function BillingApp() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {filteredItems.map((item) => (
-                  <Card key={item.id} className="rounded-2xl overflow-hidden shadow-md">
-                    <CardContent className="p-3">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-24 object-cover rounded-xl mb-2"
-                      />
-                      <h3 className="font-semibold text-sm mb-1 text-foreground">{item.name}</h3>
-                      <p className="text-muted-foreground text-sm mb-2">
-                        ₹{item.price}
-                        {settings.gstInclusive && settings.taxRate > 0 && (
-                          <span className="text-xs ml-1">(incl. GST)</span>
-                        )}
-                      </p>
-                      <Button
-                        size="sm"
-                        onClick={() => addToCart(item)}
-                        className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
-                      >
-                        <Plus size={16} className="mr-1" />
-                        Add
-                      </Button>
-                    </CardContent>
-                  </Card>
+              <div className="space-y-5">
+                {groupedItems.map(group => (
+                  <section key={group.name} id={`cat-${slugify(group.name)}`} className="scroll-mt-32">
+                    <div className="flex items-baseline justify-between mb-2 px-1">
+                      <h3 className="font-bold text-foreground text-base">{group.name}</h3>
+                      <span className="text-xs text-muted-foreground">{group.items.length} item{group.items.length === 1 ? '' : 's'}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {group.items.map((item) => (
+                        <Card key={item.id} className="rounded-2xl overflow-hidden shadow-md">
+                          <CardContent className="p-3">
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-full h-24 object-cover rounded-xl mb-2"
+                            />
+                            <h3 className="font-semibold text-sm mb-1 text-foreground">{item.name}</h3>
+                            <p className="text-muted-foreground text-sm mb-2">
+                              ₹{item.price}
+                              {settings.gstInclusive && settings.taxRate > 0 && (
+                                <span className="text-xs ml-1">(incl. GST)</span>
+                              )}
+                            </p>
+                            <Button
+                              size="sm"
+                              onClick={() => addToCart(item)}
+                              className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+                            >
+                              <Plus size={16} className="mr-1" />
+                              Add
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </section>
                 ))}
+              </div>
               </div>
             )}
 
