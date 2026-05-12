@@ -836,7 +836,8 @@ export default function BillingApp() {
     setTables([]);
     setTableCount(0);
     setActiveTable(null);
-    setOrderType("takeaway");
+    setOrderType("parcel");
+    setOrderTypeInitialized(false);
     // Reset to home tab
     setActiveTab("home");
   };
