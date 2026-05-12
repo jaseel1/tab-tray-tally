@@ -270,8 +270,15 @@ export default function BillingApp() {
       const { data } = await supabase.rpc('list_pos_tables', { p_account_id: posAccountData.account_id });
       const res = data as any;
       if (res?.success) {
+        const tcount = res.data?.table_count || 0;
         setTables((res.data?.tables || []) as PosTable[]);
-        setTableCount(res.data?.table_count || 0);
+        setTableCount(tcount);
+        setTableCountInput(tcount);
+        // Initial default: dine_in if tables exist, else parcel
+        if (!orderTypeInitialized) {
+          setOrderType(tcount > 0 ? 'dine_in' : 'parcel');
+          setOrderTypeInitialized(true);
+        }
         // Refresh active table reference
         if (activeTable) {
           const updated = (res.data?.tables || []).find((t: PosTable) => t.id === activeTable.id);
@@ -280,6 +287,38 @@ export default function BillingApp() {
       }
     } catch (e) {
       console.error('Error loading tables:', e);
+    }
+  };
+
+  const saveTableCount = async () => {
+    if (!posAccountData?.account_id || isSavingTableCount) return;
+    const n = Math.max(0, Math.min(10, Math.floor(tableCountInput || 0)));
+    setIsSavingTableCount(true);
+    try {
+      const { data } = await supabase.rpc('update_pos_table_count', {
+        p_account_id: posAccountData.account_id,
+        p_count: n,
+      });
+      const res = data as any;
+      if (res?.success) {
+        toast({ title: 'Tables updated', description: `Number of tables set to ${n}.` });
+        await loadTables();
+        // Re-evaluate default order type after change
+        if (n === 0) {
+          setOrderType('parcel');
+          setActiveTable(null);
+          setCart([]);
+        } else if (orderType === 'parcel') {
+          setOrderType('dine_in');
+        }
+      } else {
+        toast({ title: 'Error', description: res?.message || 'Failed to update tables', variant: 'destructive' });
+      }
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Error', description: 'Failed to update tables', variant: 'destructive' });
+    } finally {
+      setIsSavingTableCount(false);
     }
   };
 
