@@ -48,6 +48,7 @@ import AdminLoginScreen from "@/components/AdminLoginScreen";
 import SuperAdminDashboard from "@/components/SuperAdminDashboard";
 import { DigitalMenuSettings } from "@/components/DigitalMenuSettings";
 import { OrderEditDialog } from "@/components/OrderEditDialog";
+import { TableGrid, PosTable } from "@/components/TableGrid";
 import { supabase } from "@/integrations/supabase/client";
 
 import burgerImage from "@/assets/burger.jpg";
@@ -128,6 +129,10 @@ export default function BillingApp() {
     order: { id: string; order_number: string; payment_method: string; total_amount: number } | null;
   }>({ isOpen: false, order: null });
   const [editableOrders, setEditableOrders] = useState<Set<string>>(new Set());
+  const [orderType, setOrderType] = useState<"dine_in" | "takeaway" | "parcel">("takeaway");
+  const [tables, setTables] = useState<PosTable[]>([]);
+  const [tableCount, setTableCount] = useState<number>(0);
+  const [activeTable, setActiveTable] = useState<PosTable | null>(null);
   const { toast } = useToast();
 
   // Load data from server when account changes
@@ -135,6 +140,16 @@ export default function BillingApp() {
     if (!posAccountData?.account_id) return;
     loadServerData();
   }, [posAccountData]);
+
+  // Auto-save cart to active table session (debounced)
+  useEffect(() => {
+    if (orderType !== 'dine_in' || !activeTable) return;
+    const t = setTimeout(() => {
+      persistTableCart(activeTable.id, cart);
+    }, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart, activeTable?.id, orderType]);
 
   const loadServerData = async () => {
     if (!posAccountData?.account_id) return;
@@ -171,6 +186,9 @@ export default function BillingApp() {
 
       // Load item sales analytics
       await loadItemSalesData();
+
+      // Load tables
+      await loadTables();
 
       // Load orders
       const { data: ordersData } = await supabase.rpc('get_orders', {
@@ -240,6 +258,119 @@ export default function BillingApp() {
       }
     } catch (error) {
       console.error('Error loading sales data:', error);
+    }
+  };
+
+  const loadTables = async () => {
+    if (!posAccountData?.account_id) return;
+    try {
+      const { data } = await supabase.rpc('list_pos_tables', { p_account_id: posAccountData.account_id });
+      const res = data as any;
+      if (res?.success) {
+        setTables((res.data?.tables || []) as PosTable[]);
+        setTableCount(res.data?.table_count || 0);
+        // Refresh active table reference
+        if (activeTable) {
+          const updated = (res.data?.tables || []).find((t: PosTable) => t.id === activeTable.id);
+          setActiveTable(updated || null);
+        }
+      }
+    } catch (e) {
+      console.error('Error loading tables:', e);
+    }
+  };
+
+  const persistTableCart = async (tableId: string, items: CartItem[]) => {
+    if (!posAccountData?.account_id) return;
+    const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+    let tax = 0;
+    if (settings.taxRate > 0) {
+      tax = settings.gstInclusive
+        ? (subtotal * settings.taxRate) / (100 + settings.taxRate)
+        : (subtotal * settings.taxRate) / 100;
+    }
+    const total = settings.gstInclusive || settings.taxRate === 0 ? subtotal : subtotal + tax;
+    try {
+      await supabase.rpc('upsert_table_session', {
+        p_account_id: posAccountData.account_id,
+        p_table_id: tableId,
+        p_items: items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price, total: i.price * i.quantity, image: i.image, category: i.category })),
+        p_subtotal: subtotal,
+        p_tax: tax,
+        p_total: total,
+      });
+      await loadTables();
+    } catch (e) {
+      console.error('Error saving table session:', e);
+    }
+  };
+
+  const handleSelectTable = (table: PosTable) => {
+    setActiveTable(table);
+    const items = (table.session?.items || []).map((it: any, idx: number) => ({
+      id: `${table.id}-${idx}-${it.name}`,
+      name: it.name,
+      price: Number(it.price),
+      quantity: Number(it.quantity),
+      image: it.image || '',
+      category: it.category || '',
+    })) as CartItem[];
+    setCart(items);
+  };
+
+  const handleMarkPaid = async () => {
+    if (!activeTable?.session || !posAccountData?.account_id) return;
+    try {
+      await supabase.rpc('close_table_session', {
+        p_account_id: posAccountData.account_id,
+        p_session_id: activeTable.session.id,
+      });
+      toast({ title: 'Table cleared', description: `${activeTable.label} is now free.` });
+      setActiveTable(null);
+      setCart([]);
+      await loadTables();
+      await loadServerData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const generateTableBill = async (sessionId: string, paymentMethod: string) => {
+    if (!posAccountData?.account_id || !activeTable) return;
+    try {
+      const { data } = await supabase.rpc('generate_table_bill', {
+        p_account_id: posAccountData.account_id,
+        p_session_id: sessionId,
+        p_payment_method: paymentMethod,
+      });
+      const res = data as any;
+      if (res?.success) {
+        const sub = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+        const totalAmt = settings.gstInclusive || settings.taxRate === 0
+          ? sub
+          : sub + (sub * settings.taxRate) / 100;
+        const newOrder: Order = {
+          id: res.order_number,
+          items: [...cart],
+          total: totalAmt,
+          paymentMethod,
+          timestamp: new Date(),
+          status: 'Completed',
+        };
+        setReceiptPreview({ isOpen: true, order: newOrder });
+        toast({ title: 'Bill generated', description: `${activeTable.label} — awaiting payment.` });
+        setCart([]);
+        await loadTables();
+        await loadServerData();
+        const { data: refresh } = await supabase.rpc('list_pos_tables', { p_account_id: posAccountData.account_id });
+        const tablesNow = ((refresh as any)?.data?.tables || []) as PosTable[];
+        const refreshed = tablesNow.find(t => t.id === activeTable.id) || null;
+        setActiveTable(refreshed);
+      } else {
+        toast({ title: 'Error', description: res?.message || 'Failed to bill', variant: 'destructive' });
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -483,6 +614,31 @@ export default function BillingApp() {
       return;
     }
 
+    // Dine-in: generate bill via table session
+    if (orderType === 'dine_in') {
+      if (!activeTable?.session) {
+        // Persist the cart to create a session, then bill
+        if (!activeTable) {
+          toast({ title: 'Select a table first', variant: 'destructive' });
+          return;
+        }
+        await persistTableCart(activeTable.id, cart);
+        const { data: refresh } = await supabase.rpc('list_pos_tables', { p_account_id: posAccountData.account_id });
+        const tablesNow = ((refresh as any)?.data?.tables || []) as PosTable[];
+        const refreshed = tablesNow.find(t => t.id === activeTable.id);
+        if (!refreshed?.session) {
+          toast({ title: 'Could not start session', variant: 'destructive' });
+          return;
+        }
+        setActiveTable(refreshed);
+        setTables(tablesNow);
+        await generateTableBill(refreshed.session.id, paymentMethod);
+        return;
+      }
+      await generateTableBill(activeTable.session.id, paymentMethod);
+      return;
+    }
+
     const orderTotal = getTotalPrice();
     const orderNumber = `ORD-${Date.now()}`;
     
@@ -516,7 +672,9 @@ export default function BillingApp() {
           p_order_number: orderNumber,
           p_total_amount: orderTotal,
           p_payment_method: paymentMethod,
-          p_items: orderItems // Pass as array, not string
+          p_items: orderItems,
+          p_order_type: orderType,
+          p_table_number: null,
         });
 
         const orderResult = data as any;
@@ -633,6 +791,10 @@ export default function BillingApp() {
     setSettings(defaultSettings);
     setCart([]);
     setItemSalesData([]);
+    setTables([]);
+    setTableCount(0);
+    setActiveTable(null);
+    setOrderType("takeaway");
     // Reset to home tab
     setActiveTab("home");
   };
@@ -836,6 +998,66 @@ export default function BillingApp() {
         {/* Billing Screen */}
         <TabsContent value="bill">
           <div className="space-y-4">
+            {/* Order type selector */}
+            <div className="flex gap-2 bg-card p-1 rounded-2xl shadow-sm">
+              {tableCount > 0 && (
+                <Button
+                  variant={orderType === 'dine_in' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => { setOrderType('dine_in'); }}
+                  className="flex-1 rounded-xl"
+                >
+                  Dine-in
+                </Button>
+              )}
+              <Button
+                variant={orderType === 'takeaway' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => { setOrderType('takeaway'); setActiveTable(null); setCart([]); }}
+                className="flex-1 rounded-xl"
+              >
+                Takeaway
+              </Button>
+              <Button
+                variant={orderType === 'parcel' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => { setOrderType('parcel'); setActiveTable(null); setCart([]); }}
+                className="flex-1 rounded-xl"
+              >
+                Parcel
+              </Button>
+            </div>
+
+            {/* Tables view (dine-in) */}
+            {orderType === 'dine_in' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-foreground">
+                    {activeTable ? `Active: ${activeTable.label}` : 'Select a table'}
+                  </h3>
+                  {activeTable && (
+                    <Button size="sm" variant="ghost" className="rounded-xl" onClick={() => { setActiveTable(null); setCart([]); }}>
+                      Change table
+                    </Button>
+                  )}
+                </div>
+                <TableGrid tables={tables} activeTableId={activeTable?.id} onSelect={handleSelectTable} />
+                {activeTable?.status === 'billed' && (
+                  <Button onClick={handleMarkPaid} className="w-full rounded-xl bg-success hover:bg-success/90 text-success-foreground">
+                    Mark Paid &amp; Free Table
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {(orderType !== 'dine_in' || activeTable) && (
+            <>
+            {orderType === 'dine_in' && activeTable && (
+              <div className="text-sm font-medium text-foreground bg-muted rounded-xl px-3 py-2">
+                Ordering for: {activeTable.label}
+                {activeTable.status === 'billed' && <span className="ml-2 text-info">(billed)</span>}
+              </div>
+            )}
             <div className="relative">
               <Search className="absolute left-3 top-3 text-muted-foreground" size={20} />
               <Input
@@ -966,6 +1188,8 @@ export default function BillingApp() {
                   </div>
                 </CardContent>
               </Card>
+            )}
+            </>
             )}
           </div>
         </TabsContent>
