@@ -129,10 +129,13 @@ export default function BillingApp() {
     order: { id: string; order_number: string; payment_method: string; total_amount: number } | null;
   }>({ isOpen: false, order: null });
   const [editableOrders, setEditableOrders] = useState<Set<string>>(new Set());
-  const [orderType, setOrderType] = useState<"dine_in" | "takeaway" | "parcel">("takeaway");
+  const [orderType, setOrderType] = useState<"dine_in" | "parcel">("parcel");
   const [tables, setTables] = useState<PosTable[]>([]);
   const [tableCount, setTableCount] = useState<number>(0);
+  const [tableCountInput, setTableCountInput] = useState<number>(0);
+  const [isSavingTableCount, setIsSavingTableCount] = useState(false);
   const [activeTable, setActiveTable] = useState<PosTable | null>(null);
+  const [orderTypeInitialized, setOrderTypeInitialized] = useState(false);
   const { toast } = useToast();
 
   // Load data from server when account changes
