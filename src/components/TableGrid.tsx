@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Utensils } from "lucide-react";
+import { Utensils, Pencil } from "lucide-react";
 
 export interface TableSession {
   id: string;
@@ -27,6 +27,8 @@ interface TableGridProps {
   tables: PosTable[];
   activeTableId?: string | null;
   onSelect: (table: PosTable) => void;
+  onRename?: (table: PosTable) => void;
+  canRename?: boolean;
 }
 
 const statusStyles: Record<PosTable["status"], string> = {
@@ -50,7 +52,7 @@ function timeAgo(iso?: string) {
   return `${hrs}h ${mins % 60}m`;
 }
 
-export function TableGrid({ tables, activeTableId, onSelect }: TableGridProps) {
+export function TableGrid({ tables, activeTableId, onSelect, onRename, canRename }: TableGridProps) {
   if (tables.length === 0) {
     return (
       <Card className="rounded-2xl shadow-md">
@@ -69,18 +71,33 @@ export function TableGrid({ tables, activeTableId, onSelect }: TableGridProps) {
       {tables.map((t) => {
         const itemCount = t.session?.items?.reduce((a: number, b: any) => a + (b.quantity || 0), 0) ?? 0;
         const isActive = activeTableId === t.id;
+        const displayLabel = t.label || `Table ${t.table_number}`;
         return (
           <Card
             key={t.id}
             onClick={() => onSelect(t)}
-            className={`cursor-pointer rounded-2xl border-2 transition-all hover:shadow-lg ${statusStyles[t.status]} ${
+            className={`cursor-pointer rounded-2xl border-2 transition-all hover:shadow-lg active:scale-[0.98] ${statusStyles[t.status]} ${
               isActive ? "ring-2 ring-primary shadow-lg" : ""
             }`}
           >
-            <CardContent className="p-3">
-              <div className="flex items-start justify-between mb-2">
-                <span className="font-bold text-foreground">{t.label || `Table ${t.table_number}`}</span>
-                <Badge className={`${badgeStyles[t.status]} text-[10px] capitalize`}>{t.status}</Badge>
+            <CardContent className="p-3 min-h-[110px]">
+              <div className="flex items-start justify-between mb-2 gap-1">
+                <span className="font-bold text-foreground text-sm truncate flex-1" title={displayLabel}>
+                  {displayLabel}
+                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Badge className={`${badgeStyles[t.status]} text-[10px] capitalize`}>{t.status}</Badge>
+                  {canRename && onRename && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onRename(t); }}
+                      className="p-1 rounded-md hover:bg-background/60 text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="Rename table"
+                      title="Rename"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  )}
+                </div>
               </div>
               {t.session ? (
                 <div className="text-xs space-y-0.5 text-foreground">

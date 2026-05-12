@@ -49,6 +49,7 @@ import SuperAdminDashboard from "@/components/SuperAdminDashboard";
 import { DigitalMenuSettings } from "@/components/DigitalMenuSettings";
 import { OrderEditDialog } from "@/components/OrderEditDialog";
 import { TableGrid, PosTable } from "@/components/TableGrid";
+import { RenameTableDialog } from "@/components/RenameTableDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 import burgerImage from "@/assets/burger.jpg";
@@ -68,6 +69,9 @@ interface Order {
   paymentMethod: string;
   timestamp: Date;
   status: string;
+  orderType?: string;
+  tableLabel?: string;
+  tableNumber?: number;
 }
 
 interface EnhancedRestaurantSettings extends RestaurantSettings {
@@ -136,6 +140,9 @@ export default function BillingApp() {
   const [isSavingTableCount, setIsSavingTableCount] = useState(false);
   const [activeTable, setActiveTable] = useState<PosTable | null>(null);
   const [orderTypeInitialized, setOrderTypeInitialized] = useState(false);
+  const [renameDialog, setRenameDialog] = useState<{ open: boolean; table: PosTable | null }>({ open: false, table: null });
+  const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'dine_in' | 'parcel' | 'takeaway'>('all');
+  const [orderSort, setOrderSort] = useState<'newest' | 'oldest' | 'high' | 'low'>('newest');
   const { toast } = useToast();
 
   // Load data from server when account changes
@@ -223,17 +230,19 @@ export default function BillingApp() {
           id: order.order_number,
           serverId: order.id,
           items: order.items.map((item: any) => ({
-            id: `${order.id}-${item.item_name}`, // Generate ID for cart items
+            id: `${order.id}-${item.item_name}`,
             name: item.item_name,
             price: parseFloat(item.unit_price),
             quantity: item.quantity,
-            category: "", // Not stored in order items
+            category: "",
             image: ""
           })),
           total: parseFloat(order.total_amount),
           paymentMethod: order.payment_method,
           timestamp: new Date(order.created_at),
-          status: "Completed"
+          status: "Completed",
+          orderType: order.order_type || 'takeaway',
+          tableNumber: order.table_number ?? undefined,
         })));
       }
 
@@ -383,6 +392,27 @@ export default function BillingApp() {
     }
   };
 
+  const handleRenameTable = async (table: PosTable, newLabel: string) => {
+    if (!posAccountData?.account_id) return;
+    try {
+      const { data } = await supabase.rpc('rename_pos_table', {
+        p_account_id: posAccountData.account_id,
+        p_table_id: table.id,
+        p_label: newLabel,
+      });
+      const res = data as any;
+      if (res?.success) {
+        toast({ title: 'Table renamed' });
+        await loadTables();
+        if (activeTable?.id === table.id) {
+          setActiveTable(prev => prev ? { ...prev, label: newLabel || `Table ${prev.table_number}` } : prev);
+        }
+      } else {
+        toast({ title: 'Error', description: res?.message || 'Rename failed', variant: 'destructive' });
+      }
+    } catch (e) { console.error(e); }
+  };
+
   const generateTableBill = async (sessionId: string, paymentMethod: string) => {
     if (!posAccountData?.account_id || !activeTable) return;
     try {
@@ -404,6 +434,9 @@ export default function BillingApp() {
           paymentMethod,
           timestamp: new Date(),
           status: 'Completed',
+          orderType: 'dine_in',
+          tableLabel: activeTable.label || `Table ${activeTable.table_number}`,
+          tableNumber: activeTable.table_number,
         };
         // Auto-free the table after payment
         await supabase.rpc('close_table_session', {
@@ -689,7 +722,8 @@ export default function BillingApp() {
       total: orderTotal,
       paymentMethod,
       timestamp: new Date(),
-      status: "Completed"
+      status: "Completed",
+      orderType: orderType,
     };
 
     // Save to local state immediately
@@ -967,7 +1001,7 @@ export default function BillingApp() {
               </Card>
 
               {/* Item-wise Analytics Dashboard */}
-              {itemSalesData.length > 0 && (
+              {!privacyMode && itemSalesData.length > 0 && (
                 <Card className="bg-card shadow-lg rounded-2xl">
                   <CardHeader>
                     <CardTitle className="flex items-center text-foreground">

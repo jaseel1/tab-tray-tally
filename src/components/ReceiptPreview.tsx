@@ -65,6 +65,18 @@ export function ReceiptPreview({ order, settings, isOpen, onClose }: ReceiptPrev
                 <div className="flex justify-between">
                   <span>Order #{order.id}</span>
                 </div>
+                {order.tableLabel && (
+                  <div className="flex justify-between">
+                    <span>Table:</span>
+                    <span className="font-medium">{order.tableLabel}</span>
+                  </div>
+                )}
+                {order.orderType && (
+                  <div className="flex justify-between">
+                    <span>Type:</span>
+                    <span className="capitalize">{order.orderType.replace('_', '-')}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Date:</span>
                   <span>{new Date(order.timestamp).toLocaleString()}</span>

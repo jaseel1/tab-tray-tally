@@ -682,6 +682,10 @@ export type Database = {
         Args: { p_mobile_number: string; p_pin: string }
         Returns: Json
       }
+      rename_pos_table: {
+        Args: { p_account_id: string; p_label: string; p_table_id: string }
+        Returns: Json
+      }
       search_pos_accounts: {
         Args: {
           p_limit?: number

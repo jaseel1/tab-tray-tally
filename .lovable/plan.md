@@ -1,91 +1,74 @@
 ## Goal
 
-Add an in-app **Flutter API Documentation** page that documents the existing Supabase backend so a Flutter developer can build a Restaurant POS app using the same database/RPCs. Excludes all Super Admin endpoints.
+Six focused improvements: custom table names, privacy-aware home, in-line category creation, popular-items section, order filtering, and mobile UX polish.
 
-## Route & access
+---
 
-- New route: `/flutter-docs` (public, no auth required — it's developer reference, contains only the publishable anon key and RPC names already callable from any client).
-- Add a small "Flutter API Docs" link in the existing app sidebar/footer (owner view only) so it's discoverable but unobtrusive.
+### 1. Custom name per table (cart + bill)
 
-## Page structure
+The `pos_tables.label` column already exists. Currently it's auto-set to `"Table 1"`.
 
-Single long-scroll page with sticky left-side table of contents. Sections:
+- Add an "Edit name" pencil icon on each table card in the dine-in grid.
+- Tap → small dialog → input → saves via a new RPC `rename_pos_table(p_account_id, p_table_id, p_label)`.
+- Use the custom label everywhere: cart header (replace "Table N"), receipt/bill print, table grid, table picker.
+- Fall back to `"Table N"` when label is empty.
 
-1. **Getting Started**
-   - Supabase project URL + anon key (already public, read from `src/integrations/supabase/client.ts`)
-   - `pubspec.yaml` deps: `supabase_flutter`, `shared_preferences`, `qr_flutter`
-   - `Supabase.initialize(...)` snippet in `main.dart`
+Schema: no change (column exists). Adds 1 RPC.
 
-2. **Authentication** (custom RPC, not Supabase Auth)
-   - `pos_login(p_mobile_number, p_pin)` — owner + viewer login, returns role/account_id/license info
-   - Session storage pattern with `shared_preferences`
-   - License-expired handling
-   - Viewer vs Owner role gating (viewer = read-only)
+### 2. Hide "Top Selling Items" when privacy mode is ON
 
-3. **Settings & Account**
-   - `get_pos_settings`, `upsert_pos_settings`
-   - `get_account_full_details`
+In `src/pages/Index.tsx` around line 975, wrap the Top Selling Items card in `{!privacyMode && ( ... )}`. Single conditional render, no other logic.
 
-4. **Menu Management**
-   - `get_account_menu`, `list_menu_items`
-   - `upsert_menu_item`, `delete_menu_item`
-   - `get_categories`, `upsert_categories`
-   - Note: explicit Save Menu (no auto-save) per project rule
+### 3. Add category inline while creating/editing a menu item
 
-5. **Orders (Takeaway / Parcel)**
-   - `create_order` (with `order_type`, `table_number`)
-   - `get_account_orders`, `get_orders`
-   - `update_order_payment_method` + `can_edit_order` (time-limited edits)
+In `MenuManager.tsx` item form:
+- Replace the category Select with a Combobox-style control: existing categories list + a "+ Add new category" row at the bottom.
+- Selecting "+ Add new category" opens a small inline input → on confirm, the new category is appended to the local categories list and selected.
+- The category is persisted alongside the menu item save (existing `upsert_categories` flow already syncs from menu items, plus we'll explicitly call `upsert_categories` with the merged list on save so it appears in the billing screen's category tabs immediately).
 
-6. **Dine-in Tables**
-   - `list_pos_tables`
-   - `upsert_table_session` (cart auto-save while ordering)
-   - `generate_table_bill` (Cash/Card/UPI → marks billed + creates order + auto-frees table)
-   - `close_table_session` (Release table; works for `occupied` and `billed`)
-   - State machine diagram: `free → occupied → billed → free`
+### 4. "Popular items" section auto-populated from sales
 
-7. **Viewer Accounts (read-only staff)**
-   - `list_pos_viewers`, `create_pos_viewer`, `toggle_pos_viewer_status`, `get_viewer_count`
-   - PIN format: 8 digits
+- Compute on the client from already-loaded `orders` state (no new RPC) — count item frequency from the last 30 days, take top 6.
+- Render as a horizontal scroll row labeled "Popular" pinned at the top of the menu list (above category tabs) on the billing screen.
+- Hidden when there's no sales history yet (first-run) or fewer than 3 distinct items.
+- Tapping a popular chip adds the item to cart, same as a normal menu tile.
 
-8. **Digital Menu (public QR)**
-   - `get_digital_menu_settings`, `initialize_digital_menu`, `update_menu_theme`
-   - Public URL pattern + QR code generation in Flutter (`qr_flutter`)
+### 5. Sort/filter for Orders list
 
-9. **Analytics & Telemetry**
-   - `get_account_analytics`, `get_item_sales`
-   - `update_pos_telemetry` (auto-called by `create_order`)
+Orders section currently shows a flat list. Add:
+- A segmented filter at the top: **All · Dine-in · Parcel · Takeaway**
+- A sort dropdown: **Newest · Oldest · Highest amount · Lowest amount**
+- Both purely client-side over the already-loaded `orders` array — no backend change.
 
-10. **Realtime (optional)**
-    - Subscribing to `pos_table_sessions` / `pos_orders` for live updates
+### 6. Mobile UI polish
 
-11. **Error Handling Patterns**
-    - All RPCs return `{ success: bool, message?: string, data?: ... }`
-    - Standard Dart helper to unwrap
+Targeted, low-risk changes for ≤414px width:
 
-## Per-endpoint format
+- **Bottom-nav for primary tabs** (Billing / Orders / Menu / Tables / Settings) instead of the cramped top tab bar on mobile; keep top tabs on desktop.
+- **Cart as a slide-up sheet** on mobile (it's currently a side panel that pushes layout). Floating "View cart (3) ₹240" button at the bottom → tap opens full-height sheet.
+- **Larger tap targets** on menu tiles and table cards (min-height 64px, 16px gaps).
+- **Sticky category tabs** with horizontal scroll on mobile.
+- **Order-type toggle** (Dine-in / Parcel) becomes full-width segmented control on mobile.
+- Use existing `useIsMobile()` hook; no new deps.
 
-Each RPC documented as a card with:
-- Name + one-line purpose
-- Parameters table (name, type, required)
-- Returns shape (JSON)
-- Dart/Flutter example using `Supabase.instance.client.rpc(...)`
-- Role: Owner | Viewer (read-only) | Public
+---
 
-## Excluded (per request)
+## Files touched
 
-All Super Admin endpoints: `admin_login`, `get_admin_settings`, `upsert_admin_setting`, `get_pos_accounts`, `search_pos_accounts`, `create_pos_account`, `toggle_pos_account_status`, `update_pos_table_count` (admin-only), admin order edit override, etc.
+- `src/pages/Index.tsx` — privacy hide, popular items, order filters, mobile layout shell, custom-label usage in cart header.
+- `src/components/MenuManager.tsx` — inline "Add category" in item form.
+- `src/components/TableGrid.tsx` — pencil icon + rename dialog, show custom label.
+- `src/components/ReceiptPreview.tsx` — print custom label.
+- New: `src/components/RenameTableDialog.tsx`, `src/components/PopularItems.tsx`, `src/components/MobileBottomNav.tsx`, `src/components/MobileCartSheet.tsx`.
 
-## Files
+## Backend
 
-- `src/pages/FlutterDocs.tsx` — new page, all sections inline as readable React components.
-- `src/components/docs/EndpointCard.tsx` — reusable endpoint block (params, returns, Dart snippet with copy button).
-- `src/components/docs/CodeBlock.tsx` — syntax-highlighted code block with copy-to-clipboard (Dart + Yaml + JSON). Use existing dependencies — no new highlighter library; simple `<pre>` with monospace + a copy button is fine.
-- `src/App.tsx` — register `/flutter-docs` route.
-- Add a small "Flutter API Docs" link inside the existing settings/header area for owners.
+One migration only: new RPC `rename_pos_table(p_account_id uuid, p_table_id uuid, p_label text)` that updates `pos_tables.label`. No table changes.
+
+Will also update the Flutter API docs page (`/flutter-docs`) to include the new `rename_pos_table` RPC.
 
 ## Out of scope
 
-- No backend / DB / RPC changes.
-- No PDF or Markdown export (pure in-app page as requested).
-- No interactive "try it" playground.
+- Server-side popular-items aggregation (keeping it client-side keeps it fast and avoids a DB roundtrip).
+- Drag-to-reorder for tables.
+- Changes to dine-in payment / billing flow.
