@@ -8,6 +8,12 @@ export interface OrderItem {
   price: number;
 }
 
+export interface OrderPayment {
+  method: string;
+  amount: number;
+  created_at?: string;
+}
+
 export interface Order {
   id: string;
   items: OrderItem[];
@@ -17,6 +23,9 @@ export interface Order {
   status: string;
   tableLabel?: string;
   orderType?: string;
+  paymentStatus?: 'pending' | 'partial' | 'paid';
+  amountPaid?: number;
+  payments?: OrderPayment[];
 }
 
 export interface RestaurantSettings {
