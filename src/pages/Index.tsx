@@ -50,6 +50,7 @@ import { DigitalMenuSettings } from "@/components/DigitalMenuSettings";
 import { OrderEditDialog } from "@/components/OrderEditDialog";
 import { TableGrid, PosTable } from "@/components/TableGrid";
 import { RenameTableDialog } from "@/components/RenameTableDialog";
+import { RecordPaymentDialog, PendingOrderInfo } from "@/components/RecordPaymentDialog";
 import { PopularItems } from "@/components/PopularItems";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -60,6 +61,12 @@ import cokeImage from "@/assets/coke.jpg";
 
 interface CartItem extends MenuItem {
   quantity: number;
+}
+
+interface OrderPayment {
+  method: string;
+  amount: number;
+  created_at?: string;
 }
 
 interface Order {
@@ -73,6 +80,9 @@ interface Order {
   orderType?: string;
   tableLabel?: string;
   tableNumber?: number;
+  paymentStatus?: 'pending' | 'partial' | 'paid';
+  amountPaid?: number;
+  payments?: OrderPayment[];
 }
 
 interface EnhancedRestaurantSettings extends RestaurantSettings {
