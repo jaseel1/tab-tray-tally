@@ -399,15 +399,17 @@ export default function BillingApp() {
           timestamp: new Date(),
           status: 'Completed',
         };
+        // Auto-free the table after payment
+        await supabase.rpc('close_table_session', {
+          p_account_id: posAccountData.account_id,
+          p_session_id: sessionId,
+        });
         setReceiptPreview({ isOpen: true, order: newOrder });
-        toast({ title: 'Bill generated', description: `${activeTable.label} — awaiting payment.` });
+        toast({ title: 'Payment received', description: `${activeTable.label} is now free.` });
         setCart([]);
+        setActiveTable(null);
         await loadTables();
         await loadServerData();
-        const { data: refresh } = await supabase.rpc('list_pos_tables', { p_account_id: posAccountData.account_id });
-        const tablesNow = ((refresh as any)?.data?.tables || []) as PosTable[];
-        const refreshed = tablesNow.find(t => t.id === activeTable.id) || null;
-        setActiveTable(refreshed);
       } else {
         toast({ title: 'Error', description: res?.message || 'Failed to bill', variant: 'destructive' });
       }
