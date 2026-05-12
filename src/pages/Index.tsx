@@ -826,6 +826,18 @@ export default function BillingApp() {
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const groupedItems = (() => {
+    const groups: Record<string, MenuItem[]> = {};
+    for (const it of filteredItems) {
+      const key = it.category || 'Uncategorized';
+      (groups[key] ||= []).push(it);
+    }
+    const known = categories.filter(c => groups[c]?.length);
+    const extras = Object.keys(groups).filter(c => !categories.includes(c)).sort();
+    return [...known, ...extras].map(name => ({ name, items: groups[name] }));
+  })();
+  const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
   // Authentication handlers
   const handlePOSLogin = (accountData: any) => {
     setIsLoggedIn(true);
@@ -1154,6 +1166,21 @@ export default function BillingApp() {
                 onPick={addToCart}
                 hidden={privacyMode || !!searchTerm}
               />
+              {groupedItems.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1 scrollbar-none">
+                  {groupedItems.map(g => (
+                    <button
+                      key={g.name}
+                      onClick={() => {
+                        document.getElementById(`cat-${slugify(g.name)}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      className="shrink-0 px-3 h-8 rounded-full bg-muted hover:bg-accent text-foreground text-xs font-medium whitespace-nowrap border border-border"
+                    >
+                      {g.name} <span className="text-muted-foreground">({g.items.length})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             
             {menuItems.length === 0 ? (
