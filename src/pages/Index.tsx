@@ -964,17 +964,17 @@ export default function BillingApp() {
             <Receipt size={20} />
             <span className="text-xs mt-1">Bill</span>
           </TabsTrigger>
-          <TabsTrigger value="reports" className="flex flex-col items-center p-2 rounded-xl">
-            <BarChart3 size={20} />
-            <span className="text-xs mt-1">Reports</span>
+          <TabsTrigger value="orders" className="flex flex-col items-center p-2 rounded-xl">
+            <ClipboardList size={20} />
+            <span className="text-xs mt-1">Orders</span>
           </TabsTrigger>
           <TabsTrigger value="menu" className="flex flex-col items-center p-2 rounded-xl">
             <Menu size={20} />
             <span className="text-xs mt-1">Menu</span>
           </TabsTrigger>
-          <TabsTrigger value="orders" className="flex flex-col items-center p-2 rounded-xl">
-            <ClipboardList size={20} />
-            <span className="text-xs mt-1">Orders</span>
+          <TabsTrigger value="reports" className="flex flex-col items-center p-2 rounded-xl">
+            <BarChart3 size={20} />
+            <span className="text-xs mt-1">Reports</span>
           </TabsTrigger>
           <TabsTrigger value="settings" className={`flex flex-col items-center p-2 rounded-xl ${userRole === 'viewer' ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={userRole === 'viewer'}>
             <Settings size={20} />
