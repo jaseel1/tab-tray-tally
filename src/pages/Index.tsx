@@ -129,10 +129,13 @@ export default function BillingApp() {
     order: { id: string; order_number: string; payment_method: string; total_amount: number } | null;
   }>({ isOpen: false, order: null });
   const [editableOrders, setEditableOrders] = useState<Set<string>>(new Set());
-  const [orderType, setOrderType] = useState<"dine_in" | "takeaway" | "parcel">("takeaway");
+  const [orderType, setOrderType] = useState<"dine_in" | "parcel">("parcel");
   const [tables, setTables] = useState<PosTable[]>([]);
   const [tableCount, setTableCount] = useState<number>(0);
+  const [tableCountInput, setTableCountInput] = useState<number>(0);
+  const [isSavingTableCount, setIsSavingTableCount] = useState(false);
   const [activeTable, setActiveTable] = useState<PosTable | null>(null);
+  const [orderTypeInitialized, setOrderTypeInitialized] = useState(false);
   const { toast } = useToast();
 
   // Load data from server when account changes
@@ -267,8 +270,15 @@ export default function BillingApp() {
       const { data } = await supabase.rpc('list_pos_tables', { p_account_id: posAccountData.account_id });
       const res = data as any;
       if (res?.success) {
+        const tcount = res.data?.table_count || 0;
         setTables((res.data?.tables || []) as PosTable[]);
-        setTableCount(res.data?.table_count || 0);
+        setTableCount(tcount);
+        setTableCountInput(tcount);
+        // Initial default: dine_in if tables exist, else parcel
+        if (!orderTypeInitialized) {
+          setOrderType(tcount > 0 ? 'dine_in' : 'parcel');
+          setOrderTypeInitialized(true);
+        }
         // Refresh active table reference
         if (activeTable) {
           const updated = (res.data?.tables || []).find((t: PosTable) => t.id === activeTable.id);
@@ -277,6 +287,38 @@ export default function BillingApp() {
       }
     } catch (e) {
       console.error('Error loading tables:', e);
+    }
+  };
+
+  const saveTableCount = async () => {
+    if (!posAccountData?.account_id || isSavingTableCount) return;
+    const n = Math.max(0, Math.min(10, Math.floor(tableCountInput || 0)));
+    setIsSavingTableCount(true);
+    try {
+      const { data } = await supabase.rpc('update_pos_table_count', {
+        p_account_id: posAccountData.account_id,
+        p_count: n,
+      });
+      const res = data as any;
+      if (res?.success) {
+        toast({ title: 'Tables updated', description: `Number of tables set to ${n}.` });
+        await loadTables();
+        // Re-evaluate default order type after change
+        if (n === 0) {
+          setOrderType('parcel');
+          setActiveTable(null);
+          setCart([]);
+        } else if (orderType === 'parcel') {
+          setOrderType('dine_in');
+        }
+      } else {
+        toast({ title: 'Error', description: res?.message || 'Failed to update tables', variant: 'destructive' });
+      }
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Error', description: 'Failed to update tables', variant: 'destructive' });
+    } finally {
+      setIsSavingTableCount(false);
     }
   };
 
@@ -501,22 +543,13 @@ export default function BillingApp() {
       const itemsResult = itemsData as any;
       if (itemsResult?.success) {
         const serverItems = itemsResult.data || [];
-        if (serverItems.length === 0) {
-          toast({
-            title: "No menu items found",
-            description: "No menu items found on server. Add some items to get started.",
-            variant: "default"
-          });
-          setMenuItems([]);
-        } else {
-          setMenuItems(serverItems.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            price: parseFloat(item.price),
-            category: item.category,
-            image: item.image || ""
-          })));
-        }
+        setMenuItems(serverItems.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          price: parseFloat(item.price),
+          category: item.category,
+          image: item.image || ""
+        })));
       }
 
       // Load categories
@@ -794,7 +827,8 @@ export default function BillingApp() {
     setTables([]);
     setTableCount(0);
     setActiveTable(null);
-    setOrderType("takeaway");
+    setOrderType("parcel");
+    setOrderTypeInitialized(false);
     // Reset to home tab
     setActiveTab("home");
   };
@@ -1010,14 +1044,11 @@ export default function BillingApp() {
                   Dine-in
                 </Button>
               )}
-              <Button
-                variant={orderType === 'takeaway' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => { setOrderType('takeaway'); setActiveTable(null); setCart([]); }}
-                className="flex-1 rounded-xl"
-              >
-                Takeaway
-              </Button>
+              {tableCount === 0 && (
+                <div className="flex-1 text-center text-xs text-muted-foreground py-2 px-3">
+                  Enable tables in Settings to use Dine-in
+                </div>
+              )}
               <Button
                 variant={orderType === 'parcel' ? 'default' : 'ghost'}
                 size="sm"
@@ -1068,34 +1099,53 @@ export default function BillingApp() {
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-3">
-              {filteredItems.map((item) => (
-                <Card key={item.id} className="rounded-2xl overflow-hidden shadow-md">
-                  <CardContent className="p-3">
-                    <img 
-                      src={item.image} 
-                      alt={item.name} 
-                      className="w-full h-24 object-cover rounded-xl mb-2"
-                    />
-                    <h3 className="font-semibold text-sm mb-1 text-foreground">{item.name}</h3>
-                    <p className="text-muted-foreground text-sm mb-2">
-                      ₹{item.price}
-                      {settings.gstInclusive && settings.taxRate > 0 && (
-                        <span className="text-xs ml-1">(incl. GST)</span>
-                      )}
-                    </p>
-                    <Button 
-                      size="sm" 
-                      onClick={() => addToCart(item)}
-                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
-                    >
-                      <Plus size={16} className="mr-1" />
-                      Add
+            {menuItems.length === 0 ? (
+              <Card className="rounded-2xl shadow-md">
+                <CardContent className="p-6 text-center space-y-3">
+                  <p className="text-muted-foreground">No menu items yet.</p>
+                  {userRole === 'owner' && (
+                    <Button onClick={() => setActiveTab('menu')} className="rounded-xl">
+                      <Menu className="mr-2 h-4 w-4" /> Go to Menu
                     </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : filteredItems.length === 0 ? (
+              <Card className="rounded-2xl shadow-md">
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  No items match your search.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {filteredItems.map((item) => (
+                  <Card key={item.id} className="rounded-2xl overflow-hidden shadow-md">
+                    <CardContent className="p-3">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-24 object-cover rounded-xl mb-2"
+                      />
+                      <h3 className="font-semibold text-sm mb-1 text-foreground">{item.name}</h3>
+                      <p className="text-muted-foreground text-sm mb-2">
+                        ₹{item.price}
+                        {settings.gstInclusive && settings.taxRate > 0 && (
+                          <span className="text-xs ml-1">(incl. GST)</span>
+                        )}
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={() => addToCart(item)}
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+                      >
+                        <Plus size={16} className="mr-1" />
+                        Add
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
 
             {/* Cart */}
             {cart.length > 0 && (
@@ -1456,6 +1506,45 @@ export default function BillingApp() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Table Management (owner only) */}
+            {userRole === 'owner' && (
+              <Card className="rounded-2xl shadow-md">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground">
+                    <ClipboardList className="mr-2 h-5 w-5" />
+                    Table Management
+                  </CardTitle>
+                  <CardDescription>
+                    Set 0 to disable Dine-in. Maximum 10 tables.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Number of tables (0–10)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={tableCountInput}
+                      onChange={(e) => setTableCountInput(Math.max(0, Math.min(10, parseInt(e.target.value || '0', 10))))}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <Button
+                    onClick={saveTableCount}
+                    disabled={isSavingTableCount || tableCountInput === tableCount}
+                    className="rounded-xl w-full"
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    {isSavingTableCount ? 'Saving...' : 'Save Tables'}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Currently active: <span className="font-medium text-foreground">{tableCount}</span> table{tableCount === 1 ? '' : 's'}.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* License Information */}
             <Card className="rounded-2xl shadow-md">
