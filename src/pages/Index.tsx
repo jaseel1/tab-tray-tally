@@ -50,6 +50,7 @@ import { DigitalMenuSettings } from "@/components/DigitalMenuSettings";
 import { OrderEditDialog } from "@/components/OrderEditDialog";
 import { TableGrid, PosTable } from "@/components/TableGrid";
 import { RenameTableDialog } from "@/components/RenameTableDialog";
+import { PopularItems } from "@/components/PopularItems";
 import { supabase } from "@/integrations/supabase/client";
 
 import burgerImage from "@/assets/burger.jpg";
