@@ -575,6 +575,31 @@ export default function BillingApp() {
       return;
     }
 
+    // Dine-in: generate bill via table session
+    if (orderType === 'dine_in') {
+      if (!activeTable?.session) {
+        // Persist the cart to create a session, then bill
+        if (!activeTable) {
+          toast({ title: 'Select a table first', variant: 'destructive' });
+          return;
+        }
+        await persistTableCart(activeTable.id, cart);
+        const { data: refresh } = await supabase.rpc('list_pos_tables', { p_account_id: posAccountData.account_id });
+        const tablesNow = ((refresh as any)?.data?.tables || []) as PosTable[];
+        const refreshed = tablesNow.find(t => t.id === activeTable.id);
+        if (!refreshed?.session) {
+          toast({ title: 'Could not start session', variant: 'destructive' });
+          return;
+        }
+        setActiveTable(refreshed);
+        setTables(tablesNow);
+        await generateTableBill(refreshed.session.id, paymentMethod);
+        return;
+      }
+      await generateTableBill(activeTable.session.id, paymentMethod);
+      return;
+    }
+
     const orderTotal = getTotalPrice();
     const orderNumber = `ORD-${Date.now()}`;
     
@@ -608,7 +633,9 @@ export default function BillingApp() {
           p_order_number: orderNumber,
           p_total_amount: orderTotal,
           p_payment_method: paymentMethod,
-          p_items: orderItems // Pass as array, not string
+          p_items: orderItems,
+          p_order_type: orderType,
+          p_table_number: null,
         });
 
         const orderResult = data as any;
