@@ -81,10 +81,53 @@ export function ReceiptPreview({ order, settings, isOpen, onClose }: ReceiptPrev
                   <span>Date:</span>
                   <span>{new Date(order.timestamp).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Payment:</span>
-                  <span className="uppercase">{order.paymentMethod}</span>
-                </div>
+                {(() => {
+                  const ps = order.paymentStatus || (order.paymentMethod && order.paymentMethod !== 'pending' ? 'paid' : 'pending');
+                  if (ps === 'pending') {
+                    return (
+                      <div className="text-center font-bold text-warning border border-dashed border-warning rounded py-1 my-1">
+                        ** PAYMENT PENDING **
+                      </div>
+                    );
+                  }
+                  if (ps === 'partial') {
+                    const due = order.total - (order.amountPaid || 0);
+                    return (
+                      <>
+                        <div className="text-center font-bold text-warning">** PARTIAL PAYMENT **</div>
+                        {(order.payments || []).map((p, i) => (
+                          <div key={i} className="flex justify-between">
+                            <span className="uppercase">{p.method}:</span>
+                            <span>₹{p.amount.toFixed(2)}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between font-semibold">
+                          <span>Due:</span>
+                          <span>₹{due.toFixed(2)}</span>
+                        </div>
+                      </>
+                    );
+                  }
+                  if ((order.payments || []).length > 1) {
+                    return (
+                      <>
+                        <div>Payment:</div>
+                        {(order.payments || []).map((p, i) => (
+                          <div key={i} className="flex justify-between pl-2">
+                            <span className="uppercase">{p.method}:</span>
+                            <span>₹{p.amount.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </>
+                    );
+                  }
+                  return (
+                    <div className="flex justify-between">
+                      <span>Payment:</span>
+                      <span className="uppercase">{order.paymentMethod}</span>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             
