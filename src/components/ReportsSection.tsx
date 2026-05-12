@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { Download, Filter } from "lucide-react";
 import { Order, RestaurantSettings } from "@/lib/pdf";
 import { 
@@ -106,9 +106,9 @@ const ReportsSection: React.FC<ReportsSectionProps> = ({
 
     // Prepare chart data
     const paymentMethodData = [
-      { method: 'Cash', value: totals.cashTotal, color: 'hsl(var(--primary))' },
-      { method: 'UPI', value: totals.upiTotal, color: 'hsl(var(--chart-2))' },
-      { method: 'Card', value: totals.cardTotal, color: 'hsl(var(--chart-3))' }
+      { method: 'cash', label: 'Cash', value: totals.cashTotal },
+      { method: 'upi', label: 'UPI', value: totals.upiTotal },
+      { method: 'card', label: 'Card', value: totals.cardTotal }
     ].filter(item => item.value > 0);
 
     // Daily breakdown for non-daily reports
@@ -316,16 +316,43 @@ const ReportsSection: React.FC<ReportsSectionProps> = ({
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                  <Pie 
-                    data={reportData.paymentMethodData} 
-                    dataKey="value" 
+                  <Pie
+                    data={reportData.paymentMethodData}
+                    dataKey="value"
                     nameKey="method"
                     innerRadius={50}
-                    fill="var(--color-cash)"
-                  />
+                  >
+                    {reportData.paymentMethodData.map((entry) => (
+                      <Cell
+                        key={entry.method}
+                        fill={chartConfig[entry.method as keyof typeof chartConfig]?.color}
+                      />
+                    ))}
+                  </Pie>
                 </PieChart>
               </ResponsiveContainer>
             </ChartContainer>
+          </div>
+          <div className="mt-3 space-y-1.5">
+            {reportData.paymentMethodData.map((entry) => {
+              const total = reportData.paymentMethodData.reduce((s, e) => s + e.value, 0) || 1;
+              const pct = ((entry.value / total) * 100).toFixed(0);
+              return (
+                <div key={entry.method} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full"
+                      style={{ background: chartConfig[entry.method as keyof typeof chartConfig]?.color }}
+                    />
+                    <span className="text-foreground font-medium">{entry.label}</span>
+                  </div>
+                  <span className="text-muted-foreground">₹{entry.value.toFixed(0)} · {pct}%</span>
+                </div>
+              );
+            })}
+            {reportData.paymentMethodData.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center">No payment data</p>
+            )}
           </div>
         </Card>
 

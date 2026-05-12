@@ -1,31 +1,28 @@
-## Group Billing Menu Items by Category
+## Fix Payment Split Pie Chart
 
 ### Problem
-On the billing screen, menu items render as a single flat 2-column grid. Users want them grouped by category for easier ordering.
+In `src/components/ReportsSection.tsx`, the Payment Split pie renders all slices in the same color and shows no labels/legend, making it impossible to tell Cash vs UPI vs Card apart.
 
-### Solution
-Group `filteredItems` by `category` and render each category as its own labeled section. Add a sticky category chip bar above the grid for quick scrolling.
+Root causes:
+- `<Pie>` uses a single `fill="var(--color-cash)"` for every slice. Recharts needs one `<Cell>` per slice (each with its own color) to color them differently.
+- The data items use `method` ("Cash", "UPI", "Card") as `nameKey`, but `chartConfig` keys are lowercase (`cash`, `upi`, `card`), so the tooltip can't resolve a color/label.
+- No legend is rendered, so users can't map slice color to method.
 
-### Changes (src/pages/Index.tsx)
+### Changes (src/components/ReportsSection.tsx)
 
-1. **Compute grouped items** near the existing `filteredItems` (line 825):
-   - Build `itemsByCategory: Record<string, MenuItem[]>` from `filteredItems`.
-   - Order keys using the existing `categories` array (canonical order); append any unknown categories alphabetically at the end.
+1. **Normalize data keys** in `paymentMethodData` (around line 108):
+   - Use lowercase `method` keys (`'cash' | 'upi' | 'card'`) and a separate `label` field for display.
+   - Drop the inline `color` field (we'll source colors from `chartConfig`).
 
-2. **Add a category chip bar** in the existing sticky header (around line 1143, alongside Search + PopularItems):
-   - Horizontal scroll row of chips: "All" + each category that has items.
-   - State: `activeCategory: string | 'all'`. Tapping a chip scrolls to that section (`scrollIntoView`) and visually highlights it.
-   - Hidden when there are 0 or 1 categories with items.
+2. **Render colored cells** in the `<Pie>` (around lines 319–325):
+   - Map `reportData.paymentMethodData` to `<Cell key={method} fill={chartConfig[method].color} />`.
+   - Remove the misleading `fill="var(--color-cash)"` default.
 
-3. **Replace the flat grid** (lines 1178–1207) with sections:
-   - For each category in order, render:
-     - `<h3>` heading with category name + item count, `id={`cat-${slug}`}` for scroll targets.
-     - The existing 2-column card grid for that category's items.
-   - Keep the empty-state and "no matches" states unchanged.
+3. **Add a legend** below the pie:
+   - Import `Legend` from recharts and render `<Legend />` inside `<PieChart>`, OR render a small custom legend row (color swatch + label + amount + %) underneath the chart for clarity on small viewports.
 
-4. **Search interaction**: when `searchTerm` is set, still group results by category but auto-collapse empty categories (already handled since we only render categories with items).
+4. **Tooltip fix**: Because `nameKey` will now be the lowercase method, `ChartTooltipContent` will correctly resolve labels from `chartConfig`. Keep `hideLabel` as-is.
 
 ### Out of Scope
-- No backend changes (categories already exist in `pos_categories`).
-- No changes to MenuManager, cart, popular items, or order flow.
-- No drag-to-reorder of categories.
+- No backend or data changes; the totals computation is already correct.
+- No changes to the Daily Breakdown table or other charts.
