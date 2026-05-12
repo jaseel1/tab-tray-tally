@@ -1070,7 +1070,7 @@ export default function BillingApp() {
                   </h3>
                   {activeTable && (
                     <div className="flex gap-2">
-                      {activeTable.status === 'occupied' && !isViewer && (
+                      {activeTable.status === 'occupied' && userRole !== 'viewer' && (
                         <Button size="sm" variant="ghost" className="rounded-xl text-destructive hover:text-destructive" onClick={handleReleaseTable}>
                           Release table
                         </Button>
