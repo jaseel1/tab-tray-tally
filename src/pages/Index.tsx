@@ -360,18 +360,18 @@ export default function BillingApp() {
     setCart(items);
   };
 
-  const handleMarkPaid = async () => {
+  const handleReleaseTable = async () => {
     if (!activeTable?.session || !posAccountData?.account_id) return;
+    if (!confirm(`Release ${activeTable.label}? Any unsaved items will be discarded.`)) return;
     try {
       await supabase.rpc('close_table_session', {
         p_account_id: posAccountData.account_id,
         p_session_id: activeTable.session.id,
       });
-      toast({ title: 'Table cleared', description: `${activeTable.label} is now free.` });
+      toast({ title: 'Table released', description: `${activeTable.label} is now free.` });
       setActiveTable(null);
       setCart([]);
       await loadTables();
-      await loadServerData();
     } catch (e) {
       console.error(e);
     }
