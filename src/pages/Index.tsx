@@ -699,11 +699,11 @@ export default function BillingApp() {
     }
   };
 
-  const processOrder = async (paymentMethod: string) => {
+  const generateBill = async () => {
     if (cart.length === 0) {
       toast({
         title: "Cart is empty",
-        description: "Please add items to cart before processing order.",
+        description: "Please add items to cart before generating a bill.",
         variant: "destructive"
       });
       return;
@@ -712,7 +712,6 @@ export default function BillingApp() {
     // Dine-in: generate bill via table session
     if (orderType === 'dine_in') {
       if (!activeTable?.session) {
-        // Persist the cart to create a session, then bill
         if (!activeTable) {
           toast({ title: 'Select a table first', variant: 'destructive' });
           return;
@@ -727,33 +726,33 @@ export default function BillingApp() {
         }
         setActiveTable(refreshed);
         setTables(tablesNow);
-        await generateTableBill(refreshed.session.id, paymentMethod);
+        await generateTableBill(refreshed.session.id);
         return;
       }
-      await generateTableBill(activeTable.session.id, paymentMethod);
+      await generateTableBill(activeTable.session.id);
       return;
     }
 
     const orderTotal = getTotalPrice();
     const orderNumber = `ORD-${Date.now()}`;
-    
+
     const newOrder: Order = {
       id: orderNumber,
       items: [...cart],
       total: orderTotal,
-      paymentMethod,
+      paymentMethod: 'pending',
       timestamp: new Date(),
-      status: "Completed",
+      status: "Pending",
       orderType: orderType,
+      paymentStatus: 'pending',
+      amountPaid: 0,
+      payments: [],
     };
 
-    // Save to local state immediately
     setOrders(prevOrders => [newOrder, ...prevOrders]);
     setCart([]);
-    
     setReceiptPreview({ isOpen: true, order: newOrder });
-    
-    // Save to server
+
     if (posAccountData?.account_id) {
       try {
         const orderItems = cart.map(item => ({
@@ -767,7 +766,7 @@ export default function BillingApp() {
           p_account_id: posAccountData.account_id,
           p_order_number: orderNumber,
           p_total_amount: orderTotal,
-          p_payment_method: paymentMethod,
+          p_payment_method: null as any,
           p_items: orderItems,
           p_order_type: orderType,
           p_table_number: null,
@@ -775,17 +774,16 @@ export default function BillingApp() {
 
         const orderResult = data as any;
         if (orderResult?.success) {
-          // Refresh analytics data
-          await loadItemSalesData();
+          await loadServerData();
         }
       } catch (error) {
         console.error('Error saving order to server:', error);
       }
     }
-    
+
     toast({
-      title: "Order processed successfully",
-      description: `Order ${orderNumber} has been completed.`,
+      title: "Bill generated",
+      description: `${orderNumber} — collect payment via Orders › Pending.`,
     });
   };
 
