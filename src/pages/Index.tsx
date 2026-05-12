@@ -1799,6 +1799,16 @@ export default function BillingApp() {
           }}
         />
       )}
+
+      <RenameTableDialog
+        open={renameDialog.open}
+        initialLabel={renameDialog.table?.label || ""}
+        defaultLabel={renameDialog.table ? `Table ${renameDialog.table.table_number}` : "Table"}
+        onClose={() => setRenameDialog({ open: false, table: null })}
+        onSave={async (label) => {
+          if (renameDialog.table) await handleRenameTable(renameDialog.table, label);
+        }}
+      />
     </div>
   );
 }
