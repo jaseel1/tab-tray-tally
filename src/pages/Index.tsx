@@ -50,6 +50,7 @@ import { DigitalMenuSettings } from "@/components/DigitalMenuSettings";
 import { OrderEditDialog } from "@/components/OrderEditDialog";
 import { TableGrid, PosTable } from "@/components/TableGrid";
 import { RenameTableDialog } from "@/components/RenameTableDialog";
+import { RecordPaymentDialog, PendingOrderInfo } from "@/components/RecordPaymentDialog";
 import { PopularItems } from "@/components/PopularItems";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -60,6 +61,12 @@ import cokeImage from "@/assets/coke.jpg";
 
 interface CartItem extends MenuItem {
   quantity: number;
+}
+
+interface OrderPayment {
+  method: string;
+  amount: number;
+  created_at?: string;
 }
 
 interface Order {
@@ -73,6 +80,9 @@ interface Order {
   orderType?: string;
   tableLabel?: string;
   tableNumber?: number;
+  paymentStatus?: 'pending' | 'partial' | 'paid';
+  amountPaid?: number;
+  payments?: OrderPayment[];
 }
 
 interface EnhancedRestaurantSettings extends RestaurantSettings {
@@ -144,6 +154,8 @@ export default function BillingApp() {
   const [renameDialog, setRenameDialog] = useState<{ open: boolean; table: PosTable | null }>({ open: false, table: null });
   const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'dine_in' | 'parcel' | 'takeaway'>('all');
   const [orderSort, setOrderSort] = useState<'newest' | 'oldest' | 'high' | 'low'>('newest');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'pending' | 'paid' | 'all'>('pending');
+  const [recordPaymentDialog, setRecordPaymentDialog] = useState<{ open: boolean; order: PendingOrderInfo | null }>({ open: false, order: null });
   const { toast } = useToast();
 
   // Load data from server when account changes
@@ -239,11 +251,18 @@ export default function BillingApp() {
             image: ""
           })),
           total: parseFloat(order.total_amount),
-          paymentMethod: order.payment_method,
+          paymentMethod: order.payment_method || 'pending',
           timestamp: new Date(order.created_at),
-          status: "Completed",
+          status: order.payment_status === 'paid' ? 'Paid' : order.payment_status === 'partial' ? 'Partial' : 'Pending',
           orderType: order.order_type || 'takeaway',
           tableNumber: order.table_number ?? undefined,
+          paymentStatus: (order.payment_status || 'pending') as 'pending' | 'partial' | 'paid',
+          amountPaid: parseFloat(order.amount_paid ?? 0),
+          payments: (order.payments || []).map((p: any) => ({
+            method: p.method,
+            amount: parseFloat(p.amount),
+            created_at: p.created_at,
+          })),
         })));
       }
 
@@ -414,13 +433,13 @@ export default function BillingApp() {
     } catch (e) { console.error(e); }
   };
 
-  const generateTableBill = async (sessionId: string, paymentMethod: string) => {
+  const generateTableBill = async (sessionId: string) => {
     if (!posAccountData?.account_id || !activeTable) return;
     try {
       const { data } = await supabase.rpc('generate_table_bill', {
         p_account_id: posAccountData.account_id,
         p_session_id: sessionId,
-        p_payment_method: paymentMethod,
+        p_payment_method: null as any,
       });
       const res = data as any;
       if (res?.success) {
@@ -432,20 +451,21 @@ export default function BillingApp() {
           id: res.order_number,
           items: [...cart],
           total: totalAmt,
-          paymentMethod,
+          paymentMethod: 'pending',
           timestamp: new Date(),
-          status: 'Completed',
+          status: 'Pending',
           orderType: 'dine_in',
           tableLabel: activeTable.label || `Table ${activeTable.table_number}`,
           tableNumber: activeTable.table_number,
+          paymentStatus: 'pending',
+          amountPaid: 0,
+          payments: [],
         };
-        // Auto-free the table after payment
-        await supabase.rpc('close_table_session', {
-          p_account_id: posAccountData.account_id,
-          p_session_id: sessionId,
-        });
         setReceiptPreview({ isOpen: true, order: newOrder });
-        toast({ title: 'Payment received', description: `${activeTable.label} is now free.` });
+        toast({
+          title: 'Bill generated',
+          description: `${activeTable.label} — collect payment via Orders › Pending.`,
+        });
         setCart([]);
         setActiveTable(null);
         await loadTables();
@@ -679,11 +699,11 @@ export default function BillingApp() {
     }
   };
 
-  const processOrder = async (paymentMethod: string) => {
+  const generateBill = async () => {
     if (cart.length === 0) {
       toast({
         title: "Cart is empty",
-        description: "Please add items to cart before processing order.",
+        description: "Please add items to cart before generating a bill.",
         variant: "destructive"
       });
       return;
@@ -692,7 +712,6 @@ export default function BillingApp() {
     // Dine-in: generate bill via table session
     if (orderType === 'dine_in') {
       if (!activeTable?.session) {
-        // Persist the cart to create a session, then bill
         if (!activeTable) {
           toast({ title: 'Select a table first', variant: 'destructive' });
           return;
@@ -707,33 +726,33 @@ export default function BillingApp() {
         }
         setActiveTable(refreshed);
         setTables(tablesNow);
-        await generateTableBill(refreshed.session.id, paymentMethod);
+        await generateTableBill(refreshed.session.id);
         return;
       }
-      await generateTableBill(activeTable.session.id, paymentMethod);
+      await generateTableBill(activeTable.session.id);
       return;
     }
 
     const orderTotal = getTotalPrice();
     const orderNumber = `ORD-${Date.now()}`;
-    
+
     const newOrder: Order = {
       id: orderNumber,
       items: [...cart],
       total: orderTotal,
-      paymentMethod,
+      paymentMethod: 'pending',
       timestamp: new Date(),
-      status: "Completed",
+      status: "Pending",
       orderType: orderType,
+      paymentStatus: 'pending',
+      amountPaid: 0,
+      payments: [],
     };
 
-    // Save to local state immediately
     setOrders(prevOrders => [newOrder, ...prevOrders]);
     setCart([]);
-    
     setReceiptPreview({ isOpen: true, order: newOrder });
-    
-    // Save to server
+
     if (posAccountData?.account_id) {
       try {
         const orderItems = cart.map(item => ({
@@ -747,7 +766,7 @@ export default function BillingApp() {
           p_account_id: posAccountData.account_id,
           p_order_number: orderNumber,
           p_total_amount: orderTotal,
-          p_payment_method: paymentMethod,
+          p_payment_method: null as any,
           p_items: orderItems,
           p_order_type: orderType,
           p_table_number: null,
@@ -755,17 +774,16 @@ export default function BillingApp() {
 
         const orderResult = data as any;
         if (orderResult?.success) {
-          // Refresh analytics data
-          await loadItemSalesData();
+          await loadServerData();
         }
       } catch (error) {
         console.error('Error saving order to server:', error);
       }
     }
-    
+
     toast({
-      title: "Order processed successfully",
-      description: `Order ${orderNumber} has been completed.`,
+      title: "Bill generated",
+      description: `${orderNumber} — collect payment via Orders › Pending.`,
     });
   };
 
@@ -1314,26 +1332,17 @@ export default function BillingApp() {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-2">
-                      <Button 
-                        onClick={() => processOrder("cash")}
-                        className="bg-success hover:bg-success/90 text-success-foreground rounded-xl"
-                      >
-                        Cash
-                      </Button>
-                      <Button 
-                        onClick={() => processOrder("upi")}
-                        className="bg-info hover:bg-info/90 text-info-foreground rounded-xl"
-                      >
-                        UPI
-                      </Button>
-                      <Button 
-                        onClick={() => processOrder("card")}
-                        className="bg-warning hover:bg-warning/90 text-warning-foreground rounded-xl"
-                      >
-                        Card
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={generateBill}
+                      disabled={userRole === 'viewer'}
+                      className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-base font-semibold"
+                    >
+                      <Receipt size={18} className="mr-2" />
+                      Generate Bill
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground text-center mt-2">
+                      Customer pays later — record payment from Orders › Pending.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -1444,6 +1453,23 @@ export default function BillingApp() {
                     </Button>
                   ))}
                 </div>
+                <div className="flex gap-1 bg-card p-1 rounded-2xl shadow-sm">
+                  {([
+                    ['pending', `Pending${(() => { const n = orders.filter(o => o.paymentStatus !== 'paid').length; return n ? ` (${n})` : ''; })()}`],
+                    ['paid', 'Paid'],
+                    ['all', 'All'],
+                  ] as const).map(([val, label]) => (
+                    <Button
+                      key={val}
+                      variant={paymentStatusFilter === val ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setPaymentStatusFilter(val as any)}
+                      className="flex-1 rounded-xl text-xs whitespace-nowrap"
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
                 <div className="flex justify-end">
                   <Select value={orderSort} onValueChange={(v) => setOrderSort(v as typeof orderSort)}>
                     <SelectTrigger className="w-40 h-9 rounded-xl text-xs">
@@ -1471,6 +1497,12 @@ export default function BillingApp() {
               <div className="space-y-3">
                 {orders
                   .filter((o) => orderTypeFilter === 'all' ? true : (o.orderType || 'takeaway') === orderTypeFilter)
+                  .filter((o) => {
+                    const ps = o.paymentStatus || 'pending';
+                    if (paymentStatusFilter === 'all') return true;
+                    if (paymentStatusFilter === 'paid') return ps === 'paid';
+                    return ps !== 'paid';
+                  })
                   .slice()
                   .sort((a, b) => {
                     if (orderSort === 'high') return b.total - a.total;
@@ -1481,8 +1513,17 @@ export default function BillingApp() {
                   })
                   .map((order) => {
                   const isEditable = order.serverId && editableOrders.has(order.serverId);
+                  const ps = order.paymentStatus || 'pending';
+                  const psStyle = ps === 'paid'
+                    ? 'bg-success text-success-foreground'
+                    : ps === 'partial'
+                      ? 'bg-info text-info-foreground'
+                      : 'bg-warning text-warning-foreground';
+                  const cardClass = ps === 'paid'
+                    ? 'rounded-2xl shadow-md'
+                    : 'rounded-2xl shadow-md border-l-4 border-l-warning';
                   return (
-                    <Card key={order.id} className="rounded-2xl shadow-md">
+                    <Card key={order.id} className={cardClass}>
                       <CardContent className="p-4">
                         <div className="flex justify-between items-center mb-2 gap-2">
                           <h3 className="font-semibold text-foreground truncate">Order #{order.id}</h3>
@@ -1494,8 +1535,8 @@ export default function BillingApp() {
                                   : order.orderType}
                               </Badge>
                             )}
-                            <span className="text-xs bg-success text-success-foreground px-2 py-0.5 rounded-full">
-                              {order.status}
+                            <span className={`text-xs ${psStyle} px-2 py-0.5 rounded-full capitalize`}>
+                              {ps}
                             </span>
                           </div>
                         </div>
@@ -1546,6 +1587,23 @@ export default function BillingApp() {
                               <Receipt size={14} className="mr-1" />
                               Print
                             </Button>
+                            {ps !== 'paid' && order.serverId && userRole !== 'viewer' && (
+                              <Button
+                                size="sm"
+                                onClick={() => setRecordPaymentDialog({
+                                  open: true,
+                                  order: {
+                                    id: order.serverId!,
+                                    order_number: order.id,
+                                    total_amount: order.total,
+                                    amount_paid: order.amountPaid || 0,
+                                  },
+                                })}
+                                className="rounded-xl bg-success hover:bg-success/90 text-success-foreground"
+                              >
+                                Record Payment
+                              </Button>
+                            )}
                           </div>
                         </div>
                         
@@ -1559,8 +1617,14 @@ export default function BillingApp() {
                         </div>
                         
                         <div className="flex justify-between items-center border-t pt-2">
-                          <span className="font-semibold text-foreground">Total: ₹{order.total}</span>
-                          <span className="text-sm text-muted-foreground capitalize">{order.paymentMethod}</span>
+                          <span className="font-semibold text-foreground">Total: ₹{order.total.toFixed(2)}</span>
+                          {ps === 'paid' ? (
+                            <span className="text-sm text-muted-foreground capitalize">{order.paymentMethod}</span>
+                          ) : (
+                            <span className="text-sm text-warning font-medium">
+                              Paid ₹{(order.amountPaid || 0).toFixed(2)} / ₹{order.total.toFixed(2)}
+                            </span>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
