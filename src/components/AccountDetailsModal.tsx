@@ -385,6 +385,8 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                     )}
                   </CardContent>
                 </Card>
+
+                <TableCountSetting accountId={accountId} initial={accountDetails.settings?.table_count || 0} />
               </div>
             ) : (
               <Alert>
