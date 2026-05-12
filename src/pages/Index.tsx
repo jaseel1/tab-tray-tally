@@ -1140,13 +1140,21 @@ export default function BillingApp() {
                 {activeTable.status === 'billed' && <span className="ml-2 text-info">(billed)</span>}
               </div>
             )}
-            <div className="relative">
-              <Search className="absolute left-3 top-3 text-muted-foreground" size={20} />
-              <Input
-                placeholder="Search items..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 rounded-2xl border-border"
+            <div className="sticky top-0 z-10 bg-gradient-surface pt-1 pb-2 -mx-1 px-1 space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 text-muted-foreground" size={20} />
+                <Input
+                  placeholder="Search items..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-11 rounded-2xl border-border"
+                />
+              </div>
+              <PopularItems
+                orders={orders}
+                menuItems={menuItems}
+                onPick={addToCart}
+                hidden={privacyMode || !!searchTerm}
               />
             </div>
             
