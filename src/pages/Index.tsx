@@ -51,6 +51,8 @@ import { OrderEditDialog } from "@/components/OrderEditDialog";
 import { TableGrid, PosTable } from "@/components/TableGrid";
 import { RenameTableDialog } from "@/components/RenameTableDialog";
 import { RecordPaymentDialog, PendingOrderInfo } from "@/components/RecordPaymentDialog";
+import { PostBillDialog } from "@/components/PostBillDialog";
+import { printReceipt } from "@/lib/print";
 import { PopularItems } from "@/components/PopularItems";
 import { supabase } from "@/integrations/supabase/client";
 
