@@ -682,3 +682,57 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
     </Dialog>
   );
 };
+
+const TableCountSetting: React.FC<{ accountId: string; initial: number }> = ({ accountId, initial }) => {
+  const [count, setCount] = useState<number>(initial);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => { setCount(initial); }, [initial]);
+
+  const save = async () => {
+    if (count < 0 || count > 10) {
+      toast({ title: 'Invalid', description: 'Number of tables must be 0-10', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data } = await supabase.rpc('update_pos_table_count', { p_account_id: accountId, p_count: count });
+      const res = data as any;
+      if (res?.success) {
+        toast({ title: 'Saved', description: `Tables set to ${count}` });
+      } else {
+        toast({ title: 'Error', description: res?.message || 'Failed to save', variant: 'destructive' });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Package className="h-5 w-5" />
+          Table Management
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Label className="text-sm">Number of tables (0–10)</Label>
+        <div className="flex gap-2">
+          <Input
+            type="number"
+            min={0}
+            max={10}
+            value={count}
+            onChange={(e) => setCount(Math.max(0, Math.min(10, parseInt(e.target.value || '0', 10))))}
+          />
+          <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Set 0 to disable dine-in mode. Reducing this number removes higher-numbered free tables.
+        </p>
+      </CardContent>
+    </Card>
+  );
+};
