@@ -1521,12 +1521,10 @@ export default function BillingApp() {
                   const ps = order.paymentStatus || 'pending';
                   const psStyle = ps === 'paid'
                     ? 'bg-success text-success-foreground'
-                    : ps === 'partial'
-                      ? 'bg-info text-info-foreground'
-                      : 'bg-warning text-warning-foreground';
+                    : 'bg-destructive text-destructive-foreground';
                   const cardClass = ps === 'paid'
                     ? 'rounded-2xl shadow-md'
-                    : 'rounded-2xl shadow-md border-l-4 border-l-warning';
+                    : 'rounded-2xl shadow-md border-l-4 border-l-destructive bg-destructive/5';
                   return (
                     <Card key={order.id} className={cardClass}>
                       <CardContent className="p-4">
