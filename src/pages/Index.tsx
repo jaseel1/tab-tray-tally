@@ -433,13 +433,13 @@ export default function BillingApp() {
     } catch (e) { console.error(e); }
   };
 
-  const generateTableBill = async (sessionId: string, paymentMethod: string) => {
+  const generateTableBill = async (sessionId: string) => {
     if (!posAccountData?.account_id || !activeTable) return;
     try {
       const { data } = await supabase.rpc('generate_table_bill', {
         p_account_id: posAccountData.account_id,
         p_session_id: sessionId,
-        p_payment_method: paymentMethod,
+        p_payment_method: null as any,
       });
       const res = data as any;
       if (res?.success) {
@@ -451,20 +451,21 @@ export default function BillingApp() {
           id: res.order_number,
           items: [...cart],
           total: totalAmt,
-          paymentMethod,
+          paymentMethod: 'pending',
           timestamp: new Date(),
-          status: 'Completed',
+          status: 'Pending',
           orderType: 'dine_in',
           tableLabel: activeTable.label || `Table ${activeTable.table_number}`,
           tableNumber: activeTable.table_number,
+          paymentStatus: 'pending',
+          amountPaid: 0,
+          payments: [],
         };
-        // Auto-free the table after payment
-        await supabase.rpc('close_table_session', {
-          p_account_id: posAccountData.account_id,
-          p_session_id: sessionId,
-        });
         setReceiptPreview({ isOpen: true, order: newOrder });
-        toast({ title: 'Payment received', description: `${activeTable.label} is now free.` });
+        toast({
+          title: 'Bill generated',
+          description: `${activeTable.label} — collect payment via Orders › Pending.`,
+        });
         setCart([]);
         setActiveTable(null);
         await loadTables();
