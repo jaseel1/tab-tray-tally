@@ -177,6 +177,9 @@ export default function BillingApp() {
       // Load item sales analytics
       await loadItemSalesData();
 
+      // Load tables
+      await loadTables();
+
       // Load orders
       const { data: ordersData } = await supabase.rpc('get_orders', {
         p_account_id: posAccountData.account_id
