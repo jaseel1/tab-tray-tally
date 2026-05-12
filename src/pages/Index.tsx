@@ -755,7 +755,8 @@ export default function BillingApp() {
 
     setOrders(prevOrders => [newOrder, ...prevOrders]);
     setCart([]);
-    setReceiptPreview({ isOpen: true, order: newOrder });
+    printReceipt(newOrder, settings);
+    setPostBillOrder(newOrder);
 
     if (posAccountData?.account_id) {
       try {
