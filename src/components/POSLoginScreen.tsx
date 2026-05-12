@@ -51,10 +51,8 @@ export default function POSLoginScreen({ onLoginSuccess }: POSLoginScreenProps) 
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/20 to-secondary/20 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-            <Smartphone className="w-8 h-8 text-primary" />
-          </div>
-          <CardTitle className="text-2xl font-bold">POS Login</CardTitle>
+          <img src={biscuitposLogo} alt="BiscuitPOS" className="mx-auto mb-3 h-12 w-auto select-none" />
+          <CardTitle className="text-xl font-semibold">Sign in to BiscuitPOS</CardTitle>
           <p className="text-muted-foreground">Enter your mobile number and PIN</p>
         </CardHeader>
         <CardContent>
