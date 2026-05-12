@@ -48,6 +48,7 @@ import AdminLoginScreen from "@/components/AdminLoginScreen";
 import SuperAdminDashboard from "@/components/SuperAdminDashboard";
 import { DigitalMenuSettings } from "@/components/DigitalMenuSettings";
 import { OrderEditDialog } from "@/components/OrderEditDialog";
+import { TableGrid, PosTable } from "@/components/TableGrid";
 import { supabase } from "@/integrations/supabase/client";
 
 import burgerImage from "@/assets/burger.jpg";
