@@ -1239,7 +1239,6 @@ export default function BillingApp() {
                   </section>
                 ))}
               </div>
-              </div>
             )}
 
             {/* Cart */}
