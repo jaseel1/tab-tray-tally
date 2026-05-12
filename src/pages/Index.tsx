@@ -140,6 +140,9 @@ export default function BillingApp() {
   const [isSavingTableCount, setIsSavingTableCount] = useState(false);
   const [activeTable, setActiveTable] = useState<PosTable | null>(null);
   const [orderTypeInitialized, setOrderTypeInitialized] = useState(false);
+  const [renameDialog, setRenameDialog] = useState<{ open: boolean; table: PosTable | null }>({ open: false, table: null });
+  const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'dine_in' | 'parcel' | 'takeaway'>('all');
+  const [orderSort, setOrderSort] = useState<'newest' | 'oldest' | 'high' | 'low'>('newest');
   const { toast } = useToast();
 
   // Load data from server when account changes
