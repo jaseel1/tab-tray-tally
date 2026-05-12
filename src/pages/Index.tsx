@@ -51,6 +51,8 @@ import { OrderEditDialog } from "@/components/OrderEditDialog";
 import { TableGrid, PosTable } from "@/components/TableGrid";
 import { RenameTableDialog } from "@/components/RenameTableDialog";
 import { RecordPaymentDialog, PendingOrderInfo } from "@/components/RecordPaymentDialog";
+import { PostBillDialog } from "@/components/PostBillDialog";
+import { printReceipt } from "@/lib/print";
 import { PopularItems } from "@/components/PopularItems";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -156,6 +158,7 @@ export default function BillingApp() {
   const [orderSort, setOrderSort] = useState<'newest' | 'oldest' | 'high' | 'low'>('newest');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<'pending' | 'paid' | 'all'>('pending');
   const [recordPaymentDialog, setRecordPaymentDialog] = useState<{ open: boolean; order: PendingOrderInfo | null }>({ open: false, order: null });
+  const [postBillOrder, setPostBillOrder] = useState<Order | null>(null);
   const { toast } = useToast();
 
   // Load data from server when account changes
@@ -461,7 +464,8 @@ export default function BillingApp() {
           amountPaid: 0,
           payments: [],
         };
-        setReceiptPreview({ isOpen: true, order: newOrder });
+        printReceipt(newOrder, settings);
+        setPostBillOrder(newOrder);
         toast({
           title: 'Bill generated',
           description: `${activeTable.label} — collect payment via Orders › Pending.`,
@@ -751,7 +755,8 @@ export default function BillingApp() {
 
     setOrders(prevOrders => [newOrder, ...prevOrders]);
     setCart([]);
-    setReceiptPreview({ isOpen: true, order: newOrder });
+    printReceipt(newOrder, settings);
+    setPostBillOrder(newOrder);
 
     if (posAccountData?.account_id) {
       try {
@@ -1341,7 +1346,7 @@ export default function BillingApp() {
                       Generate Bill
                     </Button>
                     <p className="text-[11px] text-muted-foreground text-center mt-2">
-                      Customer pays later — record payment from Orders › Pending.
+                      Bill prints automatically. Record payment now or later from Orders.
                     </p>
                   </div>
                 </CardContent>
@@ -1948,6 +1953,34 @@ export default function BillingApp() {
           }}
         />
       )}
+
+      <PostBillDialog
+        open={!!postBillOrder}
+        order={postBillOrder}
+        settings={settings}
+        onClose={() => setPostBillOrder(null)}
+        onRecordPayment={(o) => {
+          // Find the latest synced order (with serverId) by order_number
+          const synced = orders.find((x) => x.id === o.id);
+          if (!synced?.serverId) {
+            toast({
+              title: 'Saving bill…',
+              description: 'Please try again in a moment.',
+            });
+            return;
+          }
+          setRecordPaymentDialog({
+            open: true,
+            order: {
+              id: synced.serverId,
+              order_number: synced.id,
+              total_amount: synced.total,
+              amount_paid: synced.amountPaid || 0,
+            },
+          });
+          setPostBillOrder(null);
+        }}
+      />
 
       <RenameTableDialog
         open={renameDialog.open}
