@@ -154,9 +154,10 @@ const ReportsSection: React.FC<ReportsSectionProps> = ({
         const dayData = dateMap.get(dateKey)!;
         dayData.orders += 1;
         dayData.total += order.total;
-        if (order.paymentMethod === 'cash') dayData.cash += order.total;
-        if (order.paymentMethod === 'upi') dayData.upi += order.total;
-        if (order.paymentMethod === 'card') dayData.card += order.total;
+        const s = splitOrder(order);
+        dayData.cash += s.cash;
+        dayData.upi += s.upi;
+        dayData.card += s.card;
       });
 
       dailyBreakdown = Array.from(dateMap.entries())
