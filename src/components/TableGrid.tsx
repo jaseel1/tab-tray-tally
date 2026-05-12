@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Utensils, Pencil } from "lucide-react";
+import { Utensils } from "lucide-react";
 
 export interface TableSession {
   id: string;
@@ -27,8 +27,6 @@ interface TableGridProps {
   tables: PosTable[];
   activeTableId?: string | null;
   onSelect: (table: PosTable) => void;
-  onRename?: (table: PosTable) => void;
-  canRename?: boolean;
 }
 
 const statusStyles: Record<PosTable["status"], string> = {
@@ -52,7 +50,7 @@ function timeAgo(iso?: string) {
   return `${hrs}h ${mins % 60}m`;
 }
 
-export function TableGrid({ tables, activeTableId, onSelect, onRename, canRename }: TableGridProps) {
+export function TableGrid({ tables, activeTableId, onSelect }: TableGridProps) {
   if (tables.length === 0) {
     return (
       <Card className="rounded-2xl shadow-md">
@@ -87,16 +85,6 @@ export function TableGrid({ tables, activeTableId, onSelect, onRename, canRename
                 </span>
                 <div className="flex items-center gap-1 shrink-0">
                   <Badge className={`${badgeStyles[t.status]} text-[10px] capitalize`}>{t.status}</Badge>
-                  {canRename && onRename && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onRename(t); }}
-                      className="p-1 rounded-md hover:bg-background/60 text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label="Rename table"
-                      title="Rename"
-                    >
-                      <Pencil size={12} />
-                    </button>
-                  )}
                 </div>
               </div>
               {t.session ? (

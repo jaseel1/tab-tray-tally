@@ -1126,8 +1126,6 @@ export default function BillingApp() {
                   tables={tables}
                   activeTableId={activeTable?.id}
                   onSelect={handleSelectTable}
-                  canRename={userRole !== 'viewer'}
-                  onRename={(t) => setRenameDialog({ open: true, table: t })}
                 />
               </div>
             )}
@@ -1661,6 +1659,34 @@ export default function BillingApp() {
                   <p className="text-xs text-muted-foreground">
                     Currently active: <span className="font-medium text-foreground">{tableCount}</span> table{tableCount === 1 ? '' : 's'}.
                   </p>
+
+                  {tables.length > 0 && (
+                    <div className="pt-2 border-t space-y-2">
+                      <Label className="text-sm text-muted-foreground">Table names</Label>
+                      <div className="space-y-2">
+                        {tables.map((t) => {
+                          const display = t.label || `Table ${t.table_number}`;
+                          return (
+                            <div key={t.id} className="flex items-center justify-between gap-2 p-2 bg-muted rounded-xl">
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">{display}</p>
+                                <p className="text-xs text-muted-foreground">Table #{t.table_number}</p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="rounded-xl shrink-0"
+                                onClick={() => setRenameDialog({ open: true, table: t })}
+                              >
+                                <Pencil size={14} className="mr-1" />
+                                Rename
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
