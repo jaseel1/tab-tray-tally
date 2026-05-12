@@ -998,6 +998,59 @@ export default function BillingApp() {
         {/* Billing Screen */}
         <TabsContent value="bill">
           <div className="space-y-4">
+            {/* Order type selector */}
+            <div className="flex gap-2 bg-card p-1 rounded-2xl shadow-sm">
+              {tableCount > 0 && (
+                <Button
+                  variant={orderType === 'dine_in' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => { setOrderType('dine_in'); }}
+                  className="flex-1 rounded-xl"
+                >
+                  Dine-in
+                </Button>
+              )}
+              <Button
+                variant={orderType === 'takeaway' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => { setOrderType('takeaway'); setActiveTable(null); setCart([]); }}
+                className="flex-1 rounded-xl"
+              >
+                Takeaway
+              </Button>
+              <Button
+                variant={orderType === 'parcel' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => { setOrderType('parcel'); setActiveTable(null); setCart([]); }}
+                className="flex-1 rounded-xl"
+              >
+                Parcel
+              </Button>
+            </div>
+
+            {/* Tables view (dine-in) */}
+            {orderType === 'dine_in' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-foreground">
+                    {activeTable ? `Active: ${activeTable.label}` : 'Select a table'}
+                  </h3>
+                  {activeTable && (
+                    <Button size="sm" variant="ghost" className="rounded-xl" onClick={() => { setActiveTable(null); setCart([]); }}>
+                      Change table
+                    </Button>
+                  )}
+                </div>
+                <TableGrid tables={tables} activeTableId={activeTable?.id} onSelect={handleSelectTable} />
+                {activeTable?.status === 'billed' && (
+                  <Button onClick={handleMarkPaid} className="w-full rounded-xl bg-success hover:bg-success/90 text-success-foreground">
+                    Mark Paid &amp; Free Table
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {(orderType !== 'dine_in' || activeTable) && (
             <div className="relative">
               <Search className="absolute left-3 top-3 text-muted-foreground" size={20} />
               <Input
