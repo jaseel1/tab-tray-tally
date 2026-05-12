@@ -156,6 +156,7 @@ export default function BillingApp() {
   const [orderSort, setOrderSort] = useState<'newest' | 'oldest' | 'high' | 'low'>('newest');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<'pending' | 'paid' | 'all'>('pending');
   const [recordPaymentDialog, setRecordPaymentDialog] = useState<{ open: boolean; order: PendingOrderInfo | null }>({ open: false, order: null });
+  const [postBillOrder, setPostBillOrder] = useState<Order | null>(null);
   const { toast } = useToast();
 
   // Load data from server when account changes
