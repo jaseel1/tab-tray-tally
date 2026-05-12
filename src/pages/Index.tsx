@@ -251,7 +251,80 @@ export default function BillingApp() {
     }
   };
 
-  const saveSettingsToServer = async () => {
+  const loadTables = async () => {
+    if (!posAccountData?.account_id) return;
+    try {
+      const { data } = await supabase.rpc('list_pos_tables', { p_account_id: posAccountData.account_id });
+      const res = data as any;
+      if (res?.success) {
+        setTables((res.data?.tables || []) as PosTable[]);
+        setTableCount(res.data?.table_count || 0);
+        // Refresh active table reference
+        if (activeTable) {
+          const updated = (res.data?.tables || []).find((t: PosTable) => t.id === activeTable.id);
+          setActiveTable(updated || null);
+        }
+      }
+    } catch (e) {
+      console.error('Error loading tables:', e);
+    }
+  };
+
+  const persistTableCart = async (tableId: string, items: CartItem[]) => {
+    if (!posAccountData?.account_id) return;
+    const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+    let tax = 0;
+    if (settings.taxRate > 0) {
+      tax = settings.gstInclusive
+        ? (subtotal * settings.taxRate) / (100 + settings.taxRate)
+        : (subtotal * settings.taxRate) / 100;
+    }
+    const total = settings.gstInclusive || settings.taxRate === 0 ? subtotal : subtotal + tax;
+    try {
+      await supabase.rpc('upsert_table_session', {
+        p_account_id: posAccountData.account_id,
+        p_table_id: tableId,
+        p_items: items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price, total: i.price * i.quantity, image: i.image, category: i.category })),
+        p_subtotal: subtotal,
+        p_tax: tax,
+        p_total: total,
+      });
+      await loadTables();
+    } catch (e) {
+      console.error('Error saving table session:', e);
+    }
+  };
+
+  const handleSelectTable = (table: PosTable) => {
+    setActiveTable(table);
+    const items = (table.session?.items || []).map((it: any, idx: number) => ({
+      id: `${table.id}-${idx}-${it.name}`,
+      name: it.name,
+      price: Number(it.price),
+      quantity: Number(it.quantity),
+      image: it.image || '',
+      category: it.category || '',
+    })) as CartItem[];
+    setCart(items);
+  };
+
+  const handleMarkPaid = async () => {
+    if (!activeTable?.session || !posAccountData?.account_id) return;
+    try {
+      await supabase.rpc('close_table_session', {
+        p_account_id: posAccountData.account_id,
+        p_session_id: activeTable.session.id,
+      });
+      toast({ title: 'Table cleared', description: `${activeTable.label} is now free.` });
+      setActiveTable(null);
+      setCart([]);
+      await loadTables();
+      await loadServerData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
     if (!posAccountData?.account_id || isSavingSettings) return;
     
     setIsSavingSettings(true);
