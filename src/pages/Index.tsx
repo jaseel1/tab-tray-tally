@@ -230,17 +230,19 @@ export default function BillingApp() {
           id: order.order_number,
           serverId: order.id,
           items: order.items.map((item: any) => ({
-            id: `${order.id}-${item.item_name}`, // Generate ID for cart items
+            id: `${order.id}-${item.item_name}`,
             name: item.item_name,
             price: parseFloat(item.unit_price),
             quantity: item.quantity,
-            category: "", // Not stored in order items
+            category: "",
             image: ""
           })),
           total: parseFloat(order.total_amount),
           paymentMethod: order.payment_method,
           timestamp: new Date(order.created_at),
-          status: "Completed"
+          status: "Completed",
+          orderType: order.order_type || 'takeaway',
+          tableNumber: order.table_number ?? undefined,
         })));
       }
 
@@ -388,6 +390,27 @@ export default function BillingApp() {
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const handleRenameTable = async (table: PosTable, newLabel: string) => {
+    if (!posAccountData?.account_id) return;
+    try {
+      const { data } = await supabase.rpc('rename_pos_table', {
+        p_account_id: posAccountData.account_id,
+        p_table_id: table.id,
+        p_label: newLabel,
+      });
+      const res = data as any;
+      if (res?.success) {
+        toast({ title: 'Table renamed' });
+        await loadTables();
+        if (activeTable?.id === table.id) {
+          setActiveTable(prev => prev ? { ...prev, label: newLabel || `Table ${prev.table_number}` } : prev);
+        }
+      } else {
+        toast({ title: 'Error', description: res?.message || 'Rename failed', variant: 'destructive' });
+      }
+    } catch (e) { console.error(e); }
   };
 
   const generateTableBill = async (sessionId: string, paymentMethod: string) => {
