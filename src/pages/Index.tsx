@@ -1195,7 +1195,7 @@ export default function BillingApp() {
                       <Button
                         size="sm"
                         onClick={() => addToCart(item)}
-                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+                        className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
                       >
                         <Plus size={16} className="mr-1" />
                         Add
