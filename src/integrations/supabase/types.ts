@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.4"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -427,6 +427,44 @@ export type Database = {
           },
         ]
       }
+      pos_viewers: {
+        Row: {
+          created_at: string
+          id: string
+          mobile_number: string
+          pin_hash: string
+          pos_account_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mobile_number: string
+          pin_hash: string
+          pos_account_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mobile_number?: string
+          pin_hash?: string
+          pos_account_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_viewers_pos_account_id_fkey"
+            columns: ["pos_account_id"]
+            isOneToOne: false
+            referencedRelation: "pos_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -459,9 +497,14 @@ export type Database = {
         }
         Returns: Json
       }
-      delete_menu_item:
-        | { Args: { p_account_id: string; p_item_id: string }; Returns: Json }
-        | { Args: { p_id: string }; Returns: Json }
+      create_pos_viewer: {
+        Args: { p_account_id: string; p_mobile_number: string; p_pin: string }
+        Returns: Json
+      }
+      delete_menu_item: {
+        Args: { p_account_id: string; p_item_id: string }
+        Returns: Json
+      }
       generate_menu_slug: {
         Args: { p_account_id: string; p_restaurant_name: string }
         Returns: string
@@ -506,16 +549,19 @@ export type Database = {
           status: string
           total_orders: number
           total_revenue: number
+          viewer_count: number
         }[]
       }
       get_pos_settings: { Args: { p_account_id: string }; Returns: Json }
       get_public_menu: { Args: { p_slug: string }; Returns: Json }
+      get_viewer_count: { Args: { p_account_id: string }; Returns: Json }
       hash_password: { Args: { password: string }; Returns: string }
       initialize_digital_menu: {
         Args: { p_account_id: string; p_restaurant_name: string }
         Returns: Json
       }
       list_menu_items: { Args: { p_account_id: string }; Returns: Json }
+      list_pos_viewers: { Args: { p_account_id: string }; Returns: Json }
       pos_login: {
         Args: { p_mobile_number: string; p_pin: string }
         Returns: Json
@@ -533,6 +579,7 @@ export type Database = {
         Args: { p_account_id: string }
         Returns: Json
       }
+      toggle_pos_viewer_status: { Args: { p_viewer_id: string }; Returns: Json }
       update_menu_theme: {
         Args: {
           p_account_id: string
