@@ -1449,11 +1449,20 @@ export default function BillingApp() {
                   return (
                     <Card key={order.id} className="rounded-2xl shadow-md">
                       <CardContent className="p-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <h3 className="font-semibold text-foreground">Order #{order.id}</h3>
-                          <span className="text-sm bg-success text-success-foreground px-2 py-1 rounded-full">
-                            {order.status}
-                          </span>
+                        <div className="flex justify-between items-center mb-2 gap-2">
+                          <h3 className="font-semibold text-foreground truncate">Order #{order.id}</h3>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {order.orderType && (
+                              <Badge variant="outline" className="text-[10px] capitalize">
+                                {order.orderType === 'dine_in'
+                                  ? (order.tableLabel || (order.tableNumber ? `T${order.tableNumber}` : 'Dine-in'))
+                                  : order.orderType}
+                              </Badge>
+                            )}
+                            <span className="text-xs bg-success text-success-foreground px-2 py-0.5 rounded-full">
+                              {order.status}
+                            </span>
+                          </div>
                         </div>
                         
                         <div className="text-sm text-muted-foreground mb-2 flex justify-between items-center">
