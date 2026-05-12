@@ -1108,34 +1108,53 @@ export default function BillingApp() {
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-3">
-              {filteredItems.map((item) => (
-                <Card key={item.id} className="rounded-2xl overflow-hidden shadow-md">
-                  <CardContent className="p-3">
-                    <img 
-                      src={item.image} 
-                      alt={item.name} 
-                      className="w-full h-24 object-cover rounded-xl mb-2"
-                    />
-                    <h3 className="font-semibold text-sm mb-1 text-foreground">{item.name}</h3>
-                    <p className="text-muted-foreground text-sm mb-2">
-                      ₹{item.price}
-                      {settings.gstInclusive && settings.taxRate > 0 && (
-                        <span className="text-xs ml-1">(incl. GST)</span>
-                      )}
-                    </p>
-                    <Button 
-                      size="sm" 
-                      onClick={() => addToCart(item)}
-                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
-                    >
-                      <Plus size={16} className="mr-1" />
-                      Add
+            {menuItems.length === 0 ? (
+              <Card className="rounded-2xl shadow-md">
+                <CardContent className="p-6 text-center space-y-3">
+                  <p className="text-muted-foreground">No menu items yet.</p>
+                  {userRole === 'owner' && (
+                    <Button onClick={() => setActiveTab('menu')} className="rounded-xl">
+                      <Menu className="mr-2 h-4 w-4" /> Go to Menu
                     </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : filteredItems.length === 0 ? (
+              <Card className="rounded-2xl shadow-md">
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  No items match your search.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {filteredItems.map((item) => (
+                  <Card key={item.id} className="rounded-2xl overflow-hidden shadow-md">
+                    <CardContent className="p-3">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-24 object-cover rounded-xl mb-2"
+                      />
+                      <h3 className="font-semibold text-sm mb-1 text-foreground">{item.name}</h3>
+                      <p className="text-muted-foreground text-sm mb-2">
+                        ₹{item.price}
+                        {settings.gstInclusive && settings.taxRate > 0 && (
+                          <span className="text-xs ml-1">(incl. GST)</span>
+                        )}
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={() => addToCart(item)}
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+                      >
+                        <Plus size={16} className="mr-1" />
+                        Add
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
 
             {/* Cart */}
             {cart.length > 0 && (
