@@ -141,6 +141,16 @@ export default function BillingApp() {
     loadServerData();
   }, [posAccountData]);
 
+  // Auto-save cart to active table session (debounced)
+  useEffect(() => {
+    if (orderType !== 'dine_in' || !activeTable) return;
+    const t = setTimeout(() => {
+      persistTableCart(activeTable.id, cart);
+    }, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart, activeTable?.id, orderType]);
+
   const loadServerData = async () => {
     if (!posAccountData?.account_id) return;
     
