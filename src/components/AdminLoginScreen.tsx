@@ -104,7 +104,7 @@ export default function AdminLoginScreen({ onLoginSuccess, onBackToPOS }: AdminL
           
           <div className="text-center">
             <Button variant="ghost" onClick={onBackToPOS} className="text-sm">
-              ← Back to POS Login
+              ← Back to BiscuitPOS Login
             </Button>
           </div>
         </CardContent>
