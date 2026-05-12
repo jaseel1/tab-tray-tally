@@ -154,6 +154,8 @@ export default function BillingApp() {
   const [renameDialog, setRenameDialog] = useState<{ open: boolean; table: PosTable | null }>({ open: false, table: null });
   const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'dine_in' | 'parcel' | 'takeaway'>('all');
   const [orderSort, setOrderSort] = useState<'newest' | 'oldest' | 'high' | 'low'>('newest');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'pending' | 'paid' | 'all'>('pending');
+  const [recordPaymentDialog, setRecordPaymentDialog] = useState<{ open: boolean; order: PendingOrderInfo | null }>({ open: false, order: null });
   const { toast } = useToast();
 
   // Load data from server when account changes
@@ -249,11 +251,18 @@ export default function BillingApp() {
             image: ""
           })),
           total: parseFloat(order.total_amount),
-          paymentMethod: order.payment_method,
+          paymentMethod: order.payment_method || 'pending',
           timestamp: new Date(order.created_at),
-          status: "Completed",
+          status: order.payment_status === 'paid' ? 'Paid' : order.payment_status === 'partial' ? 'Partial' : 'Pending',
           orderType: order.order_type || 'takeaway',
           tableNumber: order.table_number ?? undefined,
+          paymentStatus: (order.payment_status || 'pending') as 'pending' | 'partial' | 'paid',
+          amountPaid: parseFloat(order.amount_paid ?? 0),
+          payments: (order.payments || []).map((p: any) => ({
+            method: p.method,
+            amount: parseFloat(p.amount),
+            created_at: p.created_at,
+          })),
         })));
       }
 
