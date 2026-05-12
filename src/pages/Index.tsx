@@ -434,6 +434,9 @@ export default function BillingApp() {
           paymentMethod,
           timestamp: new Date(),
           status: 'Completed',
+          orderType: 'dine_in',
+          tableLabel: activeTable.label || `Table ${activeTable.table_number}`,
+          tableNumber: activeTable.table_number,
         };
         // Auto-free the table after payment
         await supabase.rpc('close_table_session', {
@@ -719,7 +722,8 @@ export default function BillingApp() {
       total: orderTotal,
       paymentMethod,
       timestamp: new Date(),
-      status: "Completed"
+      status: "Completed",
+      orderType: orderType,
     };
 
     // Save to local state immediately
@@ -997,7 +1001,7 @@ export default function BillingApp() {
               </Card>
 
               {/* Item-wise Analytics Dashboard */}
-              {itemSalesData.length > 0 && (
+              {!privacyMode && itemSalesData.length > 0 && (
                 <Card className="bg-card shadow-lg rounded-2xl">
                   <CardHeader>
                     <CardTitle className="flex items-center text-foreground">
