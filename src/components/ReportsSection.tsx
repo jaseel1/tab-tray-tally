@@ -94,13 +94,35 @@ const ReportsSection: React.FC<ReportsSectionProps> = ({
       }
     }
 
-    // Calculate totals by payment method
+    // Helper: extract per-method amounts from an order's payments table (preferred)
+    // or fall back to legacy paymentMethod/total split.
+    const splitOrder = (order: Order) => {
+      const out = { cash: 0, upi: 0, card: 0 };
+      const pays = order.payments || [];
+      if (pays.length > 0) {
+        pays.forEach((p) => {
+          const m = (p.method || '').toLowerCase();
+          if (m === 'cash') out.cash += p.amount;
+          else if (m === 'upi') out.upi += p.amount;
+          else if (m === 'card') out.card += p.amount;
+        });
+      } else if (order.paymentStatus !== 'pending') {
+        const m = (order.paymentMethod || '').toLowerCase();
+        if (m === 'cash') out.cash += order.total;
+        else if (m === 'upi') out.upi += order.total;
+        else if (m === 'card') out.card += order.total;
+      }
+      return out;
+    };
+
+    // Calculate totals by payment method (sourced from recorded payments)
     const totals = filteredOrders.reduce((acc, order) => {
       acc.totalRevenue += order.total;
       acc.totalOrders += 1;
-      if (order.paymentMethod === 'cash') acc.cashTotal += order.total;
-      if (order.paymentMethod === 'upi') acc.upiTotal += order.total;
-      if (order.paymentMethod === 'card') acc.cardTotal += order.total;
+      const s = splitOrder(order);
+      acc.cashTotal += s.cash;
+      acc.upiTotal += s.upi;
+      acc.cardTotal += s.card;
       return acc;
     }, { totalRevenue: 0, totalOrders: 0, cashTotal: 0, upiTotal: 0, cardTotal: 0 });
 
@@ -132,9 +154,10 @@ const ReportsSection: React.FC<ReportsSectionProps> = ({
         const dayData = dateMap.get(dateKey)!;
         dayData.orders += 1;
         dayData.total += order.total;
-        if (order.paymentMethod === 'cash') dayData.cash += order.total;
-        if (order.paymentMethod === 'upi') dayData.upi += order.total;
-        if (order.paymentMethod === 'card') dayData.card += order.total;
+        const s = splitOrder(order);
+        dayData.cash += s.cash;
+        dayData.upi += s.upi;
+        dayData.card += s.card;
       });
 
       dailyBreakdown = Array.from(dateMap.entries())
