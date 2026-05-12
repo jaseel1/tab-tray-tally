@@ -274,22 +274,45 @@ export function MenuManager({ items, onItemsChange, categories, onCategoriesChan
             
             <div>
               <Label htmlFor="category">Category *</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+              {isAddingCategory ? (
+                <div className="flex gap-2">
+                  <Input
+                    autoFocus
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="e.g. Beverages"
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmNewCategory(); } }}
+                  />
+                  <Button type="button" onClick={confirmNewCategory} className="rounded-xl">Add</Button>
+                  <Button type="button" variant="ghost" onClick={() => { setIsAddingCategory(false); setNewCategoryName(''); }} className="rounded-xl">Cancel</Button>
+                </div>
+              ) : (
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => {
+                    if (value === '__add_new__') { setIsAddingCategory(true); return; }
+                    setFormData(prev => ({ ...prev, category: value }));
+                  }}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="__add_new__" className="text-primary font-medium">
+                      <span className="flex items-center"><Plus size={12} className="mr-1" /> Add new category</span>
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                New categories appear in billing after you save the menu.
+              </p>
             </div>
             
             <div>
