@@ -15,6 +15,8 @@ export interface Order {
   paymentMethod: string;
   timestamp: Date;
   status: string;
+  tableLabel?: string;
+  orderType?: string;
 }
 
 export interface RestaurantSettings {
