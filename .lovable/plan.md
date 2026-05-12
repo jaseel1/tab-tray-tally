@@ -1,46 +1,27 @@
-## Fix Bill Flow + Restore Popular Items
+## Redesign Record Payment Dialog
 
-### 1. Generate Bill → auto-print → Record Payment / Skip
+Make the common case (single payment method) one-tap, hide split UI behind an opt-in, and show table number for dine-in bills.
 
-Today, clicking **Generate Bill** opens the `ReceiptPreview` dialog and the user has to click "Print" inside it. Change the flow to:
+### New flow
 
-1. Click **Generate Bill** (or **Generate Bill** on a dine-in table).
-2. Order is created server-side with `payment_status = 'pending'` (unchanged).
-3. The receipt prints **immediately** (no preview dialog).
-   - Reuse `ReceiptPreview`'s print logic by extracting it into a small helper `printReceipt(order, settings)` in `src/lib/print.ts` (renders the receipt into a hidden DOM node, calls `window.print()`, cleans up). Keep `ReceiptPreview` working for the Orders tab "View receipt" use case.
-4. Right after `window.print()` returns, open a new lightweight **`PostBillDialog`** with two buttons:
-   - **Record Payment** → opens existing `RecordPaymentDialog` for that order.
-   - **Skip** → just closes; bill stays under Orders › Pending.
-   - Secondary link: **Reprint** (calls `printReceipt` again).
-5. Dine-in branch: same — `generateTableBill` prints the consolidated bill, then shows `PostBillDialog`. Table stays "billed/occupied" until payment is recorded (already implemented).
+1. Header shows bill number, order type, and table label (e.g. `Bill #A12 · Dine-in · Table 5`).
+2. Totals strip (Total / Paid / Due) stays at top.
+3. Default view — three large method buttons in a row: **UPI**, **Cash**, **Card** (UPI first since it's most common). Tapping one auto-fills the full Due into that method and immediately shows a single confirm button **"Mark ₹X paid via UPI"**. No amount inputs visible.
+4. Below the method buttons: a small text link **"Split across methods"** that toggles the split view.
+5. Split view (only when toggled): the existing per-method amount inputs with "Due" buttons, running total, and **Save Payment** action. A back link returns to the simple view.
+6. Cancel always visible.
 
-Files:
-- `src/lib/print.ts` (new) — extract printing helper.
-- `src/components/PostBillDialog.tsx` (new) — small modal with Record Payment / Skip / Reprint.
-- `src/pages/Index.tsx` — replace `setReceiptPreview({ isOpen: true, order })` in `generateBill` and `generateTableBill` with `printReceipt(...)` + `setPostBillOrder(order)`. Mount `<PostBillDialog>` and wire its Record Payment button to the existing `recordPaymentDialog` state.
-- `src/components/ReceiptPreview.tsx` — keep as-is for Orders tab; refactor its `handlePrint` to call the shared helper.
+### Table number
 
-Update the helper text under the cart from "Customer pays later — record payment from Orders › Pending." to something matching the new flow, e.g. "Bill prints automatically. Record payment now or later from Orders."
+- Extend `PendingOrderInfo` with optional `order_type` and `table_label` (or `table_number`).
+- Populate from `order.orderType` and `order.tableNumber` / table label at both call sites in `src/pages/Index.tsx` (Orders tab button + PostBillDialog handoff).
+- Render in the dialog header subtitle.
 
-### 2. Popular items missing
+### Files
 
-`PopularItems` is mounted (Index.tsx ~1181) but hides itself when fewer than 3 distinct items exist in the last 30 days, when `searchTerm` is set, or when `privacyMode` is on.
+- `src/components/RecordPaymentDialog.tsx` — redesign UI: add `mode` state (`"quick" | "split"`), default `"quick"`; render method picker → single confirm button; keep existing split UI under the toggle; show table/order-type in header.
+- `src/pages/Index.tsx` — pass `order_type` and table label into both `setRecordPaymentDialog({ order: … })` calls.
 
-Plan:
-- Quickly verify in the running session by logging `top.length` once; if it's `< 3`, lower the threshold to **≥ 1** so even a single popular item shows (current `< 3` cutoff is too strict for new accounts and effectively hides the row).
-- Keep the 30-day window and `privacyMode`/`searchTerm` hide rules.
-- No DB or RPC changes; pending orders already flow into `orders` state so they count toward popularity immediately.
+### Out of scope
 
-File: `src/components/PopularItems.tsx` — change `if (... top.length < 3) return null;` to `if (... top.length < 1) return null;` and slice top 6 unchanged.
-
-### 3. Out of scope
-
-- No changes to RPCs, schema, or reports.
-- No change to the existing `RecordPaymentDialog` UI.
-- "Print preview" stays available from the Orders tab (View receipt).
-
-### Verification
-
-- Parcel: add items → Generate Bill → browser print dialog opens → cancel/print → PostBillDialog appears → Skip leaves order under Pending; Record Payment opens split dialog and flips order to Paid.
-- Dine-in: Generate Bill prints, table remains occupied/billed, PostBillDialog appears.
-- Popular items strip shows after 1+ ordered item from the last 30 days, hides under search/privacy mode.
+No schema, RPC, or reports changes. Quick mode just calls the same `record_order_payment` RPC with one entry equal to Due.
