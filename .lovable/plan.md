@@ -1,23 +1,15 @@
-## Highlight pending payments + swap Reports/Orders tabs
+## Highlight Orders tab when payments are pending
 
-### 1. Pending payment in red
+In `src/pages/Index.tsx` `TabsList` (around lines 967–970), make the Orders tab visually flag pending payments:
 
-In `src/pages/Index.tsx` order list rendering (around line 1521–1545):
-
-- Treat both `pending` and `partial` as "payment outstanding" → render in red (destructive).
-- `psStyle` (status pill): change non-paid branches to `bg-destructive text-destructive-foreground` (drop the warning/info split).
-- `cardClass`: change unpaid border to `border-l-destructive` (was `border-l-warning`), and add a subtle `bg-destructive/5` tint so the whole card reads red at a glance.
-- Pending count badge in the filter button (line 1463) gets `text-destructive` when count > 0.
-- "Record Payment" action button keeps green (positive action) — only the status indicators turn red.
-
-### 2. Swap Reports and Orders in the top menu
-
-In `src/pages/Index.tsx` `TabsList` (lines 958–983), reorder triggers so the sequence becomes: Home, Bill, **Orders**, Menu, **Reports**, Settings (Orders moves to slot 3, Reports moves to slot 5). No changes to `TabsContent` blocks or routing — only the trigger order changes.
+- Compute `pendingCount = orders.filter(o => o.paymentStatus !== 'paid').length`.
+- When `pendingCount > 0`, render the Orders trigger's `ClipboardList` icon and "Orders" label in `text-destructive`, and overlay a small red dot badge (`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-destructive`) on the icon. Add `relative` to the trigger so the badge positions correctly.
+- Active-tab styling (`data-[state=active]`) still wins for selected state; the red treatment only applies when not active or shown subtly behind the active background.
 
 ### Files
 
-- `src/pages/Index.tsx` — only.
+- `src/pages/Index.tsx` — only the Orders `TabsTrigger`.
 
 ### Out of scope
 
-No schema, no other tabs' content, no Reports component changes.
+No changes to other tabs, counts inside the Orders screen, or the badge in the filter row (already done).
