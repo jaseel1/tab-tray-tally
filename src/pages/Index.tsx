@@ -1332,26 +1332,17 @@ export default function BillingApp() {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-2">
-                      <Button 
-                        onClick={() => processOrder("cash")}
-                        className="bg-success hover:bg-success/90 text-success-foreground rounded-xl"
-                      >
-                        Cash
-                      </Button>
-                      <Button 
-                        onClick={() => processOrder("upi")}
-                        className="bg-info hover:bg-info/90 text-info-foreground rounded-xl"
-                      >
-                        UPI
-                      </Button>
-                      <Button 
-                        onClick={() => processOrder("card")}
-                        className="bg-warning hover:bg-warning/90 text-warning-foreground rounded-xl"
-                      >
-                        Card
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={generateBill}
+                      disabled={userRole === 'viewer'}
+                      className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-base font-semibold"
+                    >
+                      <Receipt size={18} className="mr-2" />
+                      Generate Bill
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground text-center mt-2">
+                      Customer pays later — record payment from Orders › Pending.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
