@@ -1346,7 +1346,7 @@ export default function BillingApp() {
                       Generate Bill
                     </Button>
                     <p className="text-[11px] text-muted-foreground text-center mt-2">
-                      Customer pays later — record payment from Orders › Pending.
+                      Bill prints automatically. Record payment now or later from Orders.
                     </p>
                   </div>
                 </CardContent>
