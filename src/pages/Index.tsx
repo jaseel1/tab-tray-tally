@@ -1387,8 +1387,44 @@ export default function BillingApp() {
         {/* Orders History */}
         <TabsContent value="orders">
           <div className="space-y-4">
-            <h2 className="text-xl font-bold text-foreground mb-4">Order History</h2>
-            
+            <h2 className="text-xl font-bold text-foreground mb-2">Order History</h2>
+
+            {orders.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex gap-1 bg-card p-1 rounded-2xl shadow-sm overflow-x-auto">
+                  {([
+                    ['all', 'All'],
+                    ['dine_in', 'Dine-in'],
+                    ['parcel', 'Parcel'],
+                    ['takeaway', 'Takeaway'],
+                  ] as const).map(([val, label]) => (
+                    <Button
+                      key={val}
+                      variant={orderTypeFilter === val ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setOrderTypeFilter(val)}
+                      className="flex-1 rounded-xl text-xs whitespace-nowrap"
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex justify-end">
+                  <Select value={orderSort} onValueChange={(v) => setOrderSort(v as typeof orderSort)}>
+                    <SelectTrigger className="w-40 h-9 rounded-xl text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">Newest first</SelectItem>
+                      <SelectItem value="oldest">Oldest first</SelectItem>
+                      <SelectItem value="high">Highest amount</SelectItem>
+                      <SelectItem value="low">Lowest amount</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
             {orders.length === 0 ? (
               <Card className="rounded-2xl shadow-md">
                 <CardContent className="p-8 text-center">
@@ -1398,7 +1434,21 @@ export default function BillingApp() {
               </Card>
             ) : (
               <div className="space-y-3">
-                {orders.map((order) => {
+                {orders
+                  .filter((o) => orderTypeFilter === 'all' ? true : (o.orderType || 'takeaway') === orderTypeFilter)
+                  .slice()
+                  .sort((a, b) => {
+                    if (orderSort === 'high') return b.total - a.total;
+                    if (orderSort === 'low') return a.total - b.total;
+                    const ta = new Date(a.timestamp).getTime();
+                    const tb = new Date(b.timestamp).getTime();
+                    return orderSort === 'oldest' ? ta - tb : tb - ta;
+                  })
+                  .map((order) => {
+                  const isEditable = order.serverId && editableOrders.has(order.serverId);
+                  return (
+                    <Card key={order.id} className="rounded-2xl shadow-md">
+                      <CardContent className="p-4">
                   const isEditable = order.serverId && editableOrders.has(order.serverId);
                   return (
                     <Card key={order.id} className="rounded-2xl shadow-md">
