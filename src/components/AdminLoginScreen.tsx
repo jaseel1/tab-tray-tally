@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Shield, User, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import biscuitposLogo from '@/assets/biscuitpos-logo.png';
 
 interface AdminLoginScreenProps {
   onLoginSuccess: () => void;
