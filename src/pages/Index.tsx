@@ -147,6 +147,9 @@ export default function BillingApp() {
   // Auto-save cart to active table session (debounced)
   useEffect(() => {
     if (orderType !== 'dine_in' || !activeTable) return;
+    // Don't auto-save empty carts — would re-occupy a just-released/free table
+    if (cart.length === 0 && !activeTable.session) return;
+    if (cart.length === 0) return;
     const t = setTimeout(() => {
       persistTableCart(activeTable.id, cart);
     }, 600);
