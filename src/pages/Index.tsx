@@ -1602,6 +1602,8 @@ export default function BillingApp() {
                                     order_number: order.id,
                                     total_amount: order.total,
                                     amount_paid: order.amountPaid || 0,
+                                    order_type: order.orderType,
+                                    table_number: order.tableNumber,
                                   },
                                 })}
                                 className="rounded-xl bg-success hover:bg-success/90 text-success-foreground"
@@ -1976,6 +1978,8 @@ export default function BillingApp() {
               order_number: synced.id,
               total_amount: synced.total,
               amount_paid: synced.amountPaid || 0,
+              order_type: synced.orderType,
+              table_number: synced.tableNumber,
             },
           });
           setPostBillOrder(null);
