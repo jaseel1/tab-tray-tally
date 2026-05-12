@@ -49,6 +49,7 @@ import SuperAdminDashboard from "@/components/SuperAdminDashboard";
 import { DigitalMenuSettings } from "@/components/DigitalMenuSettings";
 import { OrderEditDialog } from "@/components/OrderEditDialog";
 import { TableGrid, PosTable } from "@/components/TableGrid";
+import { RenameTableDialog } from "@/components/RenameTableDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 import burgerImage from "@/assets/burger.jpg";
@@ -68,6 +69,9 @@ interface Order {
   paymentMethod: string;
   timestamp: Date;
   status: string;
+  orderType?: string;
+  tableLabel?: string;
+  tableNumber?: number;
 }
 
 interface EnhancedRestaurantSettings extends RestaurantSettings {
