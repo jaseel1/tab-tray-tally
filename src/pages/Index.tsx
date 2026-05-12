@@ -964,10 +964,23 @@ export default function BillingApp() {
             <Receipt size={20} />
             <span className="text-xs mt-1">Bill</span>
           </TabsTrigger>
-          <TabsTrigger value="orders" className="flex flex-col items-center p-2 rounded-xl">
-            <ClipboardList size={20} />
-            <span className="text-xs mt-1">Orders</span>
-          </TabsTrigger>
+          {(() => {
+            const pendingCount = orders.filter(o => o.paymentStatus !== 'paid').length;
+            const hasPending = pendingCount > 0;
+            return (
+              <TabsTrigger value="orders" className={`relative flex flex-col items-center p-2 rounded-xl ${hasPending ? 'text-destructive' : ''}`}>
+                <div className="relative">
+                  <ClipboardList size={20} />
+                  {hasPending && (
+                    <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                      {pendingCount > 9 ? '9+' : pendingCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs mt-1">Orders</span>
+              </TabsTrigger>
+            );
+          })()}
           <TabsTrigger value="menu" className="flex flex-col items-center p-2 rounded-xl">
             <Menu size={20} />
             <span className="text-xs mt-1">Menu</span>
