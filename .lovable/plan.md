@@ -1,26 +1,19 @@
-## Changes to `src/pages/Index.tsx`
+## Plan
 
-### 1. Auto-free table immediately after payment
-In `generateTableBill` (the function called when the user taps Cash / Card / UPI), after `generate_table_bill` succeeds, also call `close_table_session` so the table flips back to `free` in the same action. The receipt preview still opens.
+1. **Stop empty-cart auto-save from reopening released tables**
+   - Update the dine-in auto-save guard so it does not call `upsert_table_session` when the active table has no cart items.
+   - This prevents `setCart([])` after Release from creating/updating a session again.
 
-```
-generate_table_bill -> close_table_session -> reload tables -> setActiveTable(null) -> show receipt
-```
+2. **Clear selected table before clearing cart during release**
+   - Keep the release flow as: close session → clear active table → clear cart → reload tables.
+   - Ensure the debounced save effect sees no active table and cannot re-save stale state.
 
-### 2. Remove the "Mark Paid & Free Table" button
-Delete the button block (lines ~1076–1080) and the now-unused `handleMarkPaid` function. Payment buttons handle freeing automatically.
+3. **Make table refresh safe after release/payment**
+   - Adjust table reload behavior so it does not re-select a table that has just been cleared by the user action.
+   - Payment should still free the table and show receipt as already implemented.
 
-### 3. Add "Release table" option for accidental selection
-When a table is selected and its status is `occupied` (not yet billed), show a small ghost button next to "Change table":
+## Technical notes
 
-- Label: **Release table**
-- Behavior: confirm dialog → call `close_table_session` (discards the open session's items) → reload tables → clear cart → `setActiveTable(null)`.
-- Only shown to owner (hidden for viewer/read-only).
-- Hidden when status is `free` (nothing to release) or `billed` (payment already in flight — must complete payment).
-
-### 4. Toast copy updates
-- After payment success: "Payment received — {Table N} is now free."
-- After release: "{Table N} released."
-
-## Files
-- `src/pages/Index.tsx` only. No DB / RPC / migration changes (existing `close_table_session` RPC already does the work).
+- The current issue is caused by the auto-save effect watching `cart` and `activeTable`; after Release, `setCart([])` can still trigger a debounced `persistTableCart(activeTable.id, [])`, and the backend RPC marks the table `occupied` again.
+- Only `src/pages/Index.tsx` needs changes.
+- No database changes are required.
