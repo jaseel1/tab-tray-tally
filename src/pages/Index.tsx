@@ -826,6 +826,18 @@ export default function BillingApp() {
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const groupedItems = (() => {
+    const groups: Record<string, MenuItem[]> = {};
+    for (const it of filteredItems) {
+      const key = it.category || 'Uncategorized';
+      (groups[key] ||= []).push(it);
+    }
+    const known = categories.filter(c => groups[c]?.length);
+    const extras = Object.keys(groups).filter(c => !categories.includes(c)).sort();
+    return [...known, ...extras].map(name => ({ name, items: groups[name] }));
+  })();
+  const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
   // Authentication handlers
   const handlePOSLogin = (accountData: any) => {
     setIsLoggedIn(true);
@@ -1154,6 +1166,21 @@ export default function BillingApp() {
                 onPick={addToCart}
                 hidden={privacyMode || !!searchTerm}
               />
+              {groupedItems.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1 scrollbar-none">
+                  {groupedItems.map(g => (
+                    <button
+                      key={g.name}
+                      onClick={() => {
+                        document.getElementById(`cat-${slugify(g.name)}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      className="shrink-0 px-3 h-8 rounded-full bg-muted hover:bg-accent text-foreground text-xs font-medium whitespace-nowrap border border-border"
+                    >
+                      {g.name} <span className="text-muted-foreground">({g.items.length})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             
             {menuItems.length === 0 ? (
@@ -1174,32 +1201,42 @@ export default function BillingApp() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {filteredItems.map((item) => (
-                  <Card key={item.id} className="rounded-2xl overflow-hidden shadow-md">
-                    <CardContent className="p-3">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-24 object-cover rounded-xl mb-2"
-                      />
-                      <h3 className="font-semibold text-sm mb-1 text-foreground">{item.name}</h3>
-                      <p className="text-muted-foreground text-sm mb-2">
-                        ₹{item.price}
-                        {settings.gstInclusive && settings.taxRate > 0 && (
-                          <span className="text-xs ml-1">(incl. GST)</span>
-                        )}
-                      </p>
-                      <Button
-                        size="sm"
-                        onClick={() => addToCart(item)}
-                        className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
-                      >
-                        <Plus size={16} className="mr-1" />
-                        Add
-                      </Button>
-                    </CardContent>
-                  </Card>
+              <div className="space-y-5">
+                {groupedItems.map(group => (
+                  <section key={group.name} id={`cat-${slugify(group.name)}`} className="scroll-mt-32">
+                    <div className="flex items-baseline justify-between mb-2 px-1">
+                      <h3 className="font-bold text-foreground text-base">{group.name}</h3>
+                      <span className="text-xs text-muted-foreground">{group.items.length} item{group.items.length === 1 ? '' : 's'}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {group.items.map((item) => (
+                        <Card key={item.id} className="rounded-2xl overflow-hidden shadow-md">
+                          <CardContent className="p-3">
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-full h-24 object-cover rounded-xl mb-2"
+                            />
+                            <h3 className="font-semibold text-sm mb-1 text-foreground">{item.name}</h3>
+                            <p className="text-muted-foreground text-sm mb-2">
+                              ₹{item.price}
+                              {settings.gstInclusive && settings.taxRate > 0 && (
+                                <span className="text-xs ml-1">(incl. GST)</span>
+                              )}
+                            </p>
+                            <Button
+                              size="sm"
+                              onClick={() => addToCart(item)}
+                              className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+                            >
+                              <Plus size={16} className="mr-1" />
+                              Add
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </section>
                 ))}
               </div>
             )}
