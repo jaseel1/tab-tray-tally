@@ -715,6 +715,10 @@ export default function BillingApp() {
     setSettings(defaultSettings);
     setCart([]);
     setItemSalesData([]);
+    setTables([]);
+    setTableCount(0);
+    setActiveTable(null);
+    setOrderType("takeaway");
     // Reset to home tab
     setActiveTab("home");
   };
