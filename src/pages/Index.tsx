@@ -1453,6 +1453,23 @@ export default function BillingApp() {
                     </Button>
                   ))}
                 </div>
+                <div className="flex gap-1 bg-card p-1 rounded-2xl shadow-sm">
+                  {([
+                    ['pending', `Pending${(() => { const n = orders.filter(o => o.paymentStatus !== 'paid').length; return n ? ` (${n})` : ''; })()}`],
+                    ['paid', 'Paid'],
+                    ['all', 'All'],
+                  ] as const).map(([val, label]) => (
+                    <Button
+                      key={val}
+                      variant={paymentStatusFilter === val ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setPaymentStatusFilter(val as any)}
+                      className="flex-1 rounded-xl text-xs whitespace-nowrap"
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
                 <div className="flex justify-end">
                   <Select value={orderSort} onValueChange={(v) => setOrderSort(v as typeof orderSort)}>
                     <SelectTrigger className="w-40 h-9 rounded-xl text-xs">
@@ -1480,6 +1497,12 @@ export default function BillingApp() {
               <div className="space-y-3">
                 {orders
                   .filter((o) => orderTypeFilter === 'all' ? true : (o.orderType || 'takeaway') === orderTypeFilter)
+                  .filter((o) => {
+                    const ps = o.paymentStatus || 'pending';
+                    if (paymentStatusFilter === 'all') return true;
+                    if (paymentStatusFilter === 'paid') return ps === 'paid';
+                    return ps !== 'paid';
+                  })
                   .slice()
                   .sort((a, b) => {
                     if (orderSort === 'high') return b.total - a.total;
