@@ -464,7 +464,8 @@ export default function BillingApp() {
           amountPaid: 0,
           payments: [],
         };
-        setReceiptPreview({ isOpen: true, order: newOrder });
+        printReceipt(newOrder, settings);
+        setPostBillOrder(newOrder);
         toast({
           title: 'Bill generated',
           description: `${activeTable.label} — collect payment via Orders › Pending.`,
