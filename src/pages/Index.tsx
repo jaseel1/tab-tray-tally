@@ -1961,8 +1961,8 @@ export default function BillingApp() {
         onClose={() => setPostBillOrder(null)}
         onRecordPayment={(o) => {
           // Find the latest synced order (with serverId) by order_number
-          const synced = orders.find((x) => x.id === o.id) || o;
-          if (!synced.serverId) {
+          const synced = orders.find((x) => x.id === o.id);
+          if (!synced?.serverId) {
             toast({
               title: 'Saving bill…',
               description: 'Please try again in a moment.',
