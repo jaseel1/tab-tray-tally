@@ -1069,17 +1069,19 @@ export default function BillingApp() {
                     {activeTable ? `Active: ${activeTable.label}` : 'Select a table'}
                   </h3>
                   {activeTable && (
-                    <Button size="sm" variant="ghost" className="rounded-xl" onClick={() => { setActiveTable(null); setCart([]); }}>
-                      Change table
-                    </Button>
+                    <div className="flex gap-2">
+                      {activeTable.status === 'occupied' && !isViewer && (
+                        <Button size="sm" variant="ghost" className="rounded-xl text-destructive hover:text-destructive" onClick={handleReleaseTable}>
+                          Release table
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="rounded-xl" onClick={() => { setActiveTable(null); setCart([]); }}>
+                        Change table
+                      </Button>
+                    </div>
                   )}
                 </div>
                 <TableGrid tables={tables} activeTableId={activeTable?.id} onSelect={handleSelectTable} />
-                {activeTable?.status === 'billed' && (
-                  <Button onClick={handleMarkPaid} className="w-full rounded-xl bg-success hover:bg-success/90 text-success-foreground">
-                    Mark Paid &amp; Free Table
-                  </Button>
-                )}
               </div>
             )}
 
