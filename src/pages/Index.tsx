@@ -1214,6 +1214,11 @@ export default function BillingApp() {
                     <h3 className="font-bold text-lg flex items-center text-foreground">
                       <ShoppingCart className="mr-2" size={20} />
                       Cart
+                      {orderType === 'dine_in' && activeTable && (
+                        <span className="ml-2 text-sm font-medium text-muted-foreground">
+                          • {activeTable.label || `Table ${activeTable.table_number}`}
+                        </span>
+                      )}
                     </h3>
                     <Button 
                       variant="outline" 
