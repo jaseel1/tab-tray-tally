@@ -1954,6 +1954,34 @@ export default function BillingApp() {
         />
       )}
 
+      <PostBillDialog
+        open={!!postBillOrder}
+        order={postBillOrder}
+        settings={settings}
+        onClose={() => setPostBillOrder(null)}
+        onRecordPayment={(o) => {
+          // Find the latest synced order (with serverId) by order_number
+          const synced = orders.find((x) => x.id === o.id) || o;
+          if (!synced.serverId) {
+            toast({
+              title: 'Saving bill…',
+              description: 'Please try again in a moment.',
+            });
+            return;
+          }
+          setRecordPaymentDialog({
+            open: true,
+            order: {
+              id: synced.serverId,
+              order_number: synced.id,
+              total_amount: synced.total,
+              amount_paid: synced.amountPaid || 0,
+            },
+          });
+          setPostBillOrder(null);
+        }}
+      />
+
       <RenameTableDialog
         open={renameDialog.open}
         initialLabel={renameDialog.table?.label || ""}
