@@ -268,8 +268,11 @@ export type Database = {
           created_at: string | null
           id: string
           order_number: string
+          order_type: string
           payment_method: string
           pos_account_id: string
+          session_id: string | null
+          table_number: number | null
           total_amount: number
           updated_at: string | null
         }
@@ -277,8 +280,11 @@ export type Database = {
           created_at?: string | null
           id?: string
           order_number: string
+          order_type?: string
           payment_method: string
           pos_account_id: string
+          session_id?: string | null
+          table_number?: number | null
           total_amount: number
           updated_at?: string | null
         }
@@ -286,8 +292,11 @@ export type Database = {
           created_at?: string | null
           id?: string
           order_number?: string
+          order_type?: string
           payment_method?: string
           pos_account_id?: string
+          session_id?: string | null
+          table_number?: number | null
           total_amount?: number
           updated_at?: string | null
         }
@@ -313,6 +322,7 @@ export type Database = {
           pos_account_id: string
           privacy_mode: boolean | null
           restaurant_name: string
+          table_count: number
           tax_rate: number | null
           updated_at: string | null
         }
@@ -327,6 +337,7 @@ export type Database = {
           pos_account_id: string
           privacy_mode?: boolean | null
           restaurant_name: string
+          table_count?: number
           tax_rate?: number | null
           updated_at?: string | null
         }
@@ -341,6 +352,7 @@ export type Database = {
           pos_account_id?: string
           privacy_mode?: boolean | null
           restaurant_name?: string
+          table_count?: number
           tax_rate?: number | null
           updated_at?: string | null
         }
@@ -391,6 +403,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pos_table_sessions: {
+        Row: {
+          bill_number: string | null
+          billed_at: string | null
+          created_at: string
+          id: string
+          items: Json
+          pos_account_id: string
+          status: string
+          subtotal: number
+          table_id: string
+          tax: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          bill_number?: string | null
+          billed_at?: string | null
+          created_at?: string
+          id?: string
+          items?: Json
+          pos_account_id: string
+          status?: string
+          subtotal?: number
+          table_id: string
+          tax?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          bill_number?: string | null
+          billed_at?: string | null
+          created_at?: string
+          id?: string
+          items?: Json
+          pos_account_id?: string
+          status?: string
+          subtotal?: number
+          table_id?: string
+          tax?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pos_tables: {
+        Row: {
+          created_at: string
+          current_session_id: string | null
+          id: string
+          label: string | null
+          pos_account_id: string
+          status: string
+          table_number: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_session_id?: string | null
+          id?: string
+          label?: string | null
+          pos_account_id: string
+          status?: string
+          table_number: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_session_id?: string | null
+          id?: string
+          label?: string | null
+          pos_account_id?: string
+          status?: string
+          table_number?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       pos_telemetry: {
         Row: {
@@ -478,16 +568,33 @@ export type Database = {
         Args: { p_account_id: string; p_order_id: string }
         Returns: Json
       }
-      create_order: {
-        Args: {
-          p_account_id: string
-          p_items: Json
-          p_order_number: string
-          p_payment_method: string
-          p_total_amount: number
-        }
+      close_table_session: {
+        Args: { p_account_id: string; p_session_id: string }
         Returns: Json
       }
+      create_order:
+        | {
+            Args: {
+              p_account_id: string
+              p_items: Json
+              p_order_number: string
+              p_payment_method: string
+              p_total_amount: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_account_id: string
+              p_items: Json
+              p_order_number: string
+              p_order_type?: string
+              p_payment_method: string
+              p_table_number?: number
+              p_total_amount: number
+            }
+            Returns: Json
+          }
       create_pos_account: {
         Args: {
           p_license_duration_days?: number
@@ -508,6 +615,14 @@ export type Database = {
       generate_menu_slug: {
         Args: { p_account_id: string; p_restaurant_name: string }
         Returns: string
+      }
+      generate_table_bill: {
+        Args: {
+          p_account_id: string
+          p_payment_method: string
+          p_session_id: string
+        }
+        Returns: Json
       }
       get_account_analytics: {
         Args: { p_account_id: string; p_days?: number }
@@ -561,6 +676,7 @@ export type Database = {
         Returns: Json
       }
       list_menu_items: { Args: { p_account_id: string }; Returns: Json }
+      list_pos_tables: { Args: { p_account_id: string }; Returns: Json }
       list_pos_viewers: { Args: { p_account_id: string }; Returns: Json }
       pos_login: {
         Args: { p_mobile_number: string; p_pin: string }
@@ -597,6 +713,10 @@ export type Database = {
         }
         Returns: Json
       }
+      update_pos_table_count: {
+        Args: { p_account_id: string; p_count: number }
+        Returns: Json
+      }
       update_pos_telemetry: {
         Args: { p_account_id: string; p_order_total: number }
         Returns: Json
@@ -631,6 +751,17 @@ export type Database = {
           p_privacy_mode?: boolean
           p_restaurant_name: string
           p_tax_rate?: number
+        }
+        Returns: Json
+      }
+      upsert_table_session: {
+        Args: {
+          p_account_id: string
+          p_items: Json
+          p_subtotal: number
+          p_table_id: string
+          p_tax: number
+          p_total: number
         }
         Returns: Json
       }
