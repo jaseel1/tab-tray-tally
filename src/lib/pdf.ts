@@ -167,6 +167,9 @@ export const generateReceiptPDF = (
   pdf.text('Thank you for your visit!', pageWidth / 2, yPos, { align: 'center' });
   yPos += 3;
   pdf.text('Please visit again', pageWidth / 2, yPos, { align: 'center' });
+  yPos += 4;
+  pdf.setFontSize(7);
+  pdf.text('Powered by BiscuitPOS.com', pageWidth / 2, yPos, { align: 'center' });
   
   return pdf;
 };
