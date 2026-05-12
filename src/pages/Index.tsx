@@ -1082,7 +1082,7 @@ export default function BillingApp() {
                   variant={orderType === 'dine_in' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => { setOrderType('dine_in'); }}
-                  className="flex-1 rounded-xl"
+                  className="flex-1 h-10 rounded-xl"
                 >
                   Dine-in
                 </Button>
@@ -1096,7 +1096,7 @@ export default function BillingApp() {
                 variant={orderType === 'parcel' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => { setOrderType('parcel'); setActiveTable(null); setCart([]); }}
-                className="flex-1 rounded-xl"
+                className="flex-1 h-10 rounded-xl"
               >
                 Parcel
               </Button>
