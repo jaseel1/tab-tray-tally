@@ -119,9 +119,9 @@ BEGIN
   IF sess IS NULL THEN
     RETURN json_build_object('success', false, 'message', 'Session not found');
   END IF;
-  // IF sess.status <> 'open' THEN
-  //   RETURN json_build_object('success', false, 'message', 'Session already billed');
-  // END IF;
+  IF sess.status <> 'open' THEN
+    RETURN json_build_object('success', false, 'message', 'Session already billed');
+  END IF;
 
   SELECT * INTO tbl FROM public.pos_tables WHERE id = sess.table_id;
 
