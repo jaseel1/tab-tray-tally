@@ -172,11 +172,7 @@ CREATE OR REPLACE FUNCTION public.generate_table_bill(
   p_account_id UUID,
   p_session_id UUID,
   p_payment_method TEXT
-) RETURNS json
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
+) RETURNS json LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   sess RECORD;
   tbl RECORD;
@@ -184,59 +180,25 @@ DECLARE
   order_num TEXT;
   item JSONB;
 BEGIN
-  SELECT *
-  INTO sess
-  FROM public.pos_table_sessions
-  WHERE id = p_session_id
-    AND pos_account_id = p_account_id;
-
+  SELECT * INTO sess FROM public.pos_table_sessions WHERE id = p_session_id AND pos_account_id = p_account_id;
   IF sess IS NULL THEN
-    RETURN json_build_object(
-      'success', false,
-      'message', 'Session not found'
-    );
+    RETURN json_build_object('success', false, 'message', 'Session not found');
+  END IF;
+  IF sess.status <> 'open' THEN
+    RETURN json_build_object('success', false, 'message', 'Session already billed');
   END IF;
 
-  -- Removed status check here
-
-  SELECT *
-  INTO tbl
-  FROM public.pos_tables
-  WHERE id = sess.table_id;
+  SELECT * INTO tbl FROM public.pos_tables WHERE id = sess.table_id;
 
   order_num := 'ORD-' || EXTRACT(EPOCH FROM now())::bigint;
 
-  INSERT INTO public.pos_orders (
-    pos_account_id,
-    order_number,
-    total_amount,
-    payment_method,
-    order_type,
-    table_number,
-    session_id
-  )
-  VALUES (
-    p_account_id,
-    order_num,
-    sess.total,
-    p_payment_method,
-    'dine_in',
-    tbl.table_number,
-    sess.id
-  )
+  INSERT INTO public.pos_orders (pos_account_id, order_number, total_amount, payment_method, order_type, table_number, session_id)
+  VALUES (p_account_id, order_num, sess.total, p_payment_method, 'dine_in', tbl.table_number, sess.id)
   RETURNING id INTO order_id;
 
-  FOR item IN
-    SELECT *
-    FROM jsonb_array_elements(sess.items)
+  FOR item IN SELECT * FROM jsonb_array_elements(sess.items)
   LOOP
-    INSERT INTO public.pos_order_items (
-      order_id,
-      item_name,
-      quantity,
-      unit_price,
-      total_price
-    )
+    INSERT INTO public.pos_order_items (order_id, item_name, quantity, unit_price, total_price)
     VALUES (
       order_id,
       item->>'name',
@@ -247,29 +209,14 @@ BEGIN
   END LOOP;
 
   UPDATE public.pos_table_sessions
-  SET
-    status = 'billed',
-    bill_number = order_num,
-    billed_at = now(),
-    updated_at = now()
-  WHERE id = sess.id;
+     SET status = 'billed', bill_number = order_num, billed_at = now(), updated_at = now()
+   WHERE id = sess.id;
 
-  UPDATE public.pos_tables
-  SET
-    status = 'billed',
-    updated_at = now()
-  WHERE id = sess.table_id;
+  UPDATE public.pos_tables SET status = 'billed', updated_at = now() WHERE id = sess.table_id;
 
-  PERFORM public.update_pos_telemetry(
-    p_account_id,
-    sess.total
-  );
+  PERFORM public.update_pos_telemetry(p_account_id, sess.total);
 
-  RETURN json_build_object(
-    'success', true,
-    'order_id', order_id,
-    'order_number', order_num
-  );
+  RETURN json_build_object('success', true, 'order_id', order_id, 'order_number', order_num);
 END;
 $$;
 
