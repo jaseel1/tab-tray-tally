@@ -115,15 +115,23 @@ DECLARE
   effective_status text;
   effective_paid numeric;
 BEGIN
-  SELECT * INTO sess FROM public.pos_table_sessions WHERE id = p_session_id AND pos_account_id = p_account_id;
+  SELECT *
+  INTO sess
+  FROM public.pos_table_sessions
+  WHERE id = p_session_id
+    AND pos_account_id = p_account_id;
+
   IF sess IS NULL THEN
-    RETURN json_build_object('success', false, 'message', 'Session not found');
-  END IF;
-  IF sess.status <> 'open' THEN
-    RETURN json_build_object('success', false, 'message', 'Session already billed');
+    RETURN json_build_object(
+      'success', false,
+      'message', 'Session not found'
+    );
   END IF;
 
-  SELECT * INTO tbl FROM public.pos_tables WHERE id = sess.table_id;
+  SELECT *
+  INTO tbl
+  FROM public.pos_tables
+  WHERE id = sess.table_id;
 
   order_num := 'ORD-' || EXTRACT(EPOCH FROM now())::bigint;
 
