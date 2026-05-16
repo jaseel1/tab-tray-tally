@@ -389,6 +389,11 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                 </Card>
 
                 <TableCountSetting accountId={accountId} initial={accountDetails.settings?.table_count || 0} />
+                <OrderEditingSetting
+                  accountId={accountId}
+                  initialMode={accountDetails.settings?.order_edit_mode ?? null}
+                  initialMinutes={accountDetails.settings?.order_edit_minutes ?? 30}
+                />
               </div>
             ) : (
               <Alert>
