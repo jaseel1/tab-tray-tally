@@ -101,7 +101,7 @@ export function AdminSettingsSection() {
           Order Editing Settings
         </CardTitle>
         <CardDescription>
-          Configure how and when POS users can edit orders after creation
+          Default order editing behavior. Used for any restaurant that doesn't have its own per-restaurant override (set from the restaurant's details modal).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

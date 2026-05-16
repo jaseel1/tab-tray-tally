@@ -389,6 +389,11 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                 </Card>
 
                 <TableCountSetting accountId={accountId} initial={accountDetails.settings?.table_count || 0} />
+                <OrderEditingSetting
+                  accountId={accountId}
+                  initialMode={accountDetails.settings?.order_edit_mode ?? null}
+                  initialMinutes={accountDetails.settings?.order_edit_minutes ?? 30}
+                />
               </div>
             ) : (
               <Alert>
@@ -731,6 +736,84 @@ const TableCountSetting: React.FC<{ accountId: string; initial: number }> = ({ a
         </div>
         <p className="text-xs text-muted-foreground">
           Set 0 to disable dine-in mode. Reducing this number removes higher-numbered free tables.
+        </p>
+      </CardContent>
+    </Card>
+  );
+};
+
+const OrderEditingSetting: React.FC<{
+  accountId: string;
+  initialMode: string | null;
+  initialMinutes: number;
+}> = ({ accountId, initialMode, initialMinutes }) => {
+  const [mode, setMode] = useState<string>(initialMode ?? 'default');
+  const [minutes, setMinutes] = useState<number>(initialMinutes || 30);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    setMode(initialMode ?? 'default');
+    setMinutes(initialMinutes || 30);
+  }, [initialMode, initialMinutes]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.rpc('update_account_edit_settings', {
+        p_account_id: accountId,
+        p_mode: mode === 'default' ? null : mode,
+        p_minutes: mode === 'time_limited' ? minutes : null,
+      });
+      if (error) throw error;
+      const res = data as any;
+      if (res?.success) {
+        toast({ title: 'Saved', description: 'Order editing settings updated' });
+      } else {
+        toast({ title: 'Error', description: res?.message || 'Failed to save', variant: 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'Failed to save', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Clock className="h-5 w-5" />
+          Order Editing
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Label className="text-sm">Mode</Label>
+        <select
+          className="w-full border rounded-md h-10 px-2 bg-background"
+          value={mode}
+          onChange={(e) => setMode(e.target.value)}
+        >
+          <option value="default">Use global default</option>
+          <option value="off">Off — editing disabled</option>
+          <option value="unlimited">Unlimited — always editable</option>
+          <option value="time_limited">Time limited</option>
+        </select>
+        {mode === 'time_limited' && (
+          <div>
+            <Label className="text-sm">Minutes after creation</Label>
+            <Input
+              type="number"
+              min={1}
+              max={1440}
+              value={minutes}
+              onChange={(e) => setMinutes(Math.max(1, Math.min(1440, parseInt(e.target.value || '30', 10))))}
+            />
+          </div>
+        )}
+        <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+        <p className="text-xs text-muted-foreground">
+          Overrides the global Order Editing default for this restaurant only.
         </p>
       </CardContent>
     </Card>
