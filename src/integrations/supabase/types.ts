@@ -351,6 +351,8 @@ export type Database = {
           fssai_number: string | null
           gst_inclusive: boolean | null
           id: string
+          order_edit_minutes: number | null
+          order_edit_mode: string | null
           phone: string | null
           pos_account_id: string
           privacy_mode: boolean | null
@@ -366,6 +368,8 @@ export type Database = {
           fssai_number?: string | null
           gst_inclusive?: boolean | null
           id?: string
+          order_edit_minutes?: number | null
+          order_edit_mode?: string | null
           phone?: string | null
           pos_account_id: string
           privacy_mode?: boolean | null
@@ -381,6 +385,8 @@ export type Database = {
           fssai_number?: string | null
           gst_inclusive?: boolean | null
           id?: string
+          order_edit_minutes?: number | null
+          order_edit_mode?: string | null
           phone?: string | null
           pos_account_id?: string
           privacy_mode?: boolean | null
@@ -737,6 +743,10 @@ export type Database = {
         Returns: Json
       }
       toggle_pos_viewer_status: { Args: { p_viewer_id: string }; Returns: Json }
+      update_account_edit_settings: {
+        Args: { p_account_id: string; p_minutes?: number; p_mode: string }
+        Returns: Json
+      }
       update_menu_theme: {
         Args: {
           p_account_id: string
