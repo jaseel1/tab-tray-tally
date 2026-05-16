@@ -407,10 +407,16 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
           <TabsContent value="menu" className="space-y-4">
             {menuData ? (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <h3 className="text-lg font-semibold">Menu Items ({menuData.menu_items.length})</h3>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">Categories: {menuData.categories.length}</Badge>
+                    <MenuImportExport
+                      accountId={accountId}
+                      items={menuData.menu_items}
+                      restaurantName={accountDetails?.account?.restaurant_name || 'menu'}
+                      onImported={fetchMenuData}
+                    />
                   </div>
                 </div>
 
