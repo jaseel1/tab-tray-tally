@@ -1,48 +1,35 @@
-## Goal
+## Menu Import/Export (Super Admin)
 
-Today, "Order Editing Settings" (Off / Unlimited / Time Limited + minutes) is a single global setting stored in `admin_settings` and applied to every restaurant. The Super Admin should be able to configure this **per restaurant** instead.
+Add CSV import/export in the Account Details modal. Import wipes the restaurant's existing menu items + categories and replaces them from the file.
 
-## Approach
+### CSV format
+`Category,Name,Price,Description,Image,Dietary,Popular`
 
-Keep the global value as a **default**, and let Super Admin override it on each restaurant. The POS will use the restaurant's own setting if present, otherwise fall back to the global default.
+### Database
+Migration to add three columns on `pos_menu_items`:
+- `description` text, nullable
+- `dietary` text, nullable (values like `veg` / `non-veg` / `none`)
+- `popular` boolean, default false
 
-## Database changes
+New RPC `replace_account_menu(p_account_id uuid, p_items jsonb)`:
+- Deletes all rows in `pos_menu_items` and `pos_categories` for that account
+- Inserts categories from distinct `category` values
+- Inserts each item (name, price, category, image, description, dietary, popular)
+- Returns `{ success, inserted_count }`
 
-Add two nullable columns on `pos_settings`:
-- `order_edit_mode` — text, nullable (values: `off`, `unlimited`, `time_limited`)
-- `order_edit_minutes` — integer, nullable
+Export uses the existing `list_menu_items` RPC (will include the new columns automatically).
 
-Rewrite `can_edit_order(order_id, account_id)` to:
-1. Read the order's `pos_account_id`.
-2. Look up `pos_settings.order_edit_mode` / `order_edit_minutes` for that account.
-3. If either is NULL, fall back to the global `admin_settings.order_edit_mode` (current behavior).
-4. Apply the same off / unlimited / time-window logic as today.
+### UI — `AccountDetailsModal.tsx`
+Add a "Menu Import / Export" card with two buttons:
+- **Export CSV** — fetches items, builds CSV with the header above, downloads `menu_export_<account>_<date>.csv`
+- **Import CSV** — file picker → parse CSV → show confirm dialog ("This will erase the current menu and replace it with N items") → call `replace_account_menu` → toast result
 
-Add a new RPC `update_account_edit_settings(p_account_id, p_mode, p_minutes)` that upserts these columns on `pos_settings` (writes NULL to mean "use global default").
+Client-side CSV parse handles quoted fields, commas inside quotes, and `true/false` booleans. Skip blank rows. Validate that Name and Price exist; surface row-level errors in toast.
 
-Extend `get_account_full_details` to return the two new fields on `settings`.
+### Out of scope
+- No changes to POS-side menu UI or Flutter app (new columns are nullable, backward compatible).
+- No bulk image upload — image column stays a URL string.
 
-## UI changes
-
-**Super Admin → Restaurant details modal (`AccountDetailsModal`)**
-Add a new "Order Editing" card with:
-- Radio: Use global default / Off / Unlimited / Time limited
-- Minutes input when "Time limited" is selected
-- Save button calling `update_account_edit_settings`
-
-**Super Admin → existing global `AdminSettingsSection`**
-Keep it, but relabel description to clarify it's the **default** used when a restaurant has not set its own value.
-
-**POS side**
-No code change required — `can_edit_order` is called the same way; the function now resolves per-account first.
-
-## Files touched
-
-- `supabase/migrations/<new>.sql` — schema + function changes
-- `src/components/AccountDetailsModal.tsx` — new per-account Order Editing card
-- `src/components/AdminSettingsSection.tsx` — copy tweak ("default for all restaurants")
-
-## Out of scope
-
-- Letting restaurant owners configure this themselves (only Super Admin per current rules).
-- Changing the bill/order edit flow logic itself.
+### Files
+- `supabase/migrations/<new>.sql` — add columns + `replace_account_menu` RPC
+- `src/components/AccountDetailsModal.tsx` — add import/export card + CSV helpers (or extract to `src/lib/menu-csv.ts`)
