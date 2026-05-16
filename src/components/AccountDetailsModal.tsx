@@ -106,7 +106,32 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
     isOpen: boolean;
     order: { id: string; order_number: string; payment_method: string; total_amount: number } | null;
   }>({ isOpen: false, order: null });
+  const [deleteOrder, setDeleteOrder] = useState<{ id: string; order_number: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
+
+  const handleDeleteOrder = async () => {
+    if (!deleteOrder) return;
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_delete_order', {
+        p_account_id: accountId,
+        p_order_id: deleteOrder.id,
+      });
+      if (error) throw error;
+      const result = data as any;
+      if (!result?.success) throw new Error(result?.message || 'Failed to delete order');
+      toast({ title: 'Order deleted', description: `${deleteOrder.order_number} removed.` });
+      setDeleteOrder(null);
+      setOrdersData(null);
+      setAnalyticsData(null);
+      await Promise.all([fetchOrdersData(), fetchAnalyticsData(), fetchAccountDetails()]);
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'Failed to delete order', variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const fetchAccountDetails = async () => {
     try {
