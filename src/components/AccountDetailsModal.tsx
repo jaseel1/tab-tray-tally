@@ -26,11 +26,13 @@ import {
   Package,
   Clock,
   Download,
+  Upload,
   ExternalLink,
   Pencil
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { buildMenuCsv, parseMenuCsv, downloadCsv } from '@/lib/menu-csv';
 
 interface AccountDetailsModalProps {
   accountId: string;
@@ -405,10 +407,16 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
           <TabsContent value="menu" className="space-y-4">
             {menuData ? (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <h3 className="text-lg font-semibold">Menu Items ({menuData.menu_items.length})</h3>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">Categories: {menuData.categories.length}</Badge>
+                    <MenuImportExport
+                      accountId={accountId}
+                      items={menuData.menu_items}
+                      restaurantName={accountDetails?.account?.restaurant_name || 'menu'}
+                      onImported={fetchMenuData}
+                    />
                   </div>
                 </div>
 
@@ -687,6 +695,82 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
     </Dialog>
   );
 };
+
+const MenuImportExport: React.FC<{
+  accountId: string;
+  items: Array<Record<string, any>>;
+  restaurantName: string;
+  onImported: () => void;
+}> = ({ accountId, items, restaurantName, onImported }) => {
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+  const fileRef = React.useRef<HTMLInputElement>(null);
+
+  const handleExport = () => {
+    const csv = buildMenuCsv(items);
+    const safe = restaurantName.replace(/[^a-z0-9]+/gi, '_').toLowerCase() || 'menu';
+    const date = new Date().toISOString().slice(0, 10);
+    downloadCsv(`menu_export_${safe}_${date}.csv`, csv);
+  };
+
+  const handleFile = async (file: File) => {
+    setBusy(true);
+    try {
+      const text = await file.text();
+      const { items: parsed, errors } = parseMenuCsv(text);
+      if (parsed.length === 0) {
+        toast({ title: 'Import failed', description: errors[0] || 'No valid rows found', variant: 'destructive' });
+        return;
+      }
+      const ok = window.confirm(
+        `This will ERASE the current menu and replace it with ${parsed.length} item(s)${
+          errors.length ? ` (${errors.length} row(s) skipped)` : ''
+        }. Continue?`,
+      );
+      if (!ok) return;
+
+      const { data, error } = await supabase.rpc('replace_account_menu', {
+        p_account_id: accountId,
+        p_items: parsed as any,
+      });
+      if (error) throw error;
+      const result = data as any;
+      if (!result?.success) throw new Error(result?.message || 'Import failed');
+      toast({
+        title: 'Menu imported',
+        description: `${result.inserted_count} item(s) loaded${errors.length ? `, ${errors.length} skipped` : ''}.`,
+      });
+      onImported();
+    } catch (e: any) {
+      toast({ title: 'Import failed', description: e.message || String(e), variant: 'destructive' });
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  return (
+    <>
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+        }}
+      />
+      <Button size="sm" variant="outline" onClick={handleExport} disabled={busy}>
+        <Download className="h-4 w-4 mr-1" /> Export CSV
+      </Button>
+      <Button size="sm" onClick={() => fileRef.current?.click()} disabled={busy}>
+        <Upload className="h-4 w-4 mr-1" /> {busy ? 'Importing...' : 'Import CSV'}
+      </Button>
+    </>
+  );
+};
+
 
 const TableCountSetting: React.FC<{ accountId: string; initial: number }> = ({ accountId, initial }) => {
   const [count, setCount] = useState<number>(initial);

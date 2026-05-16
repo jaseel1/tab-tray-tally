@@ -161,9 +161,12 @@ export type Database = {
         Row: {
           category: string
           created_at: string | null
+          description: string | null
+          dietary: string | null
           id: string
           image: string | null
           name: string
+          popular: boolean
           pos_account_id: string
           price: number
           updated_at: string | null
@@ -171,9 +174,12 @@ export type Database = {
         Insert: {
           category: string
           created_at?: string | null
+          description?: string | null
+          dietary?: string | null
           id?: string
           image?: string | null
           name: string
+          popular?: boolean
           pos_account_id: string
           price: number
           updated_at?: string | null
@@ -181,9 +187,12 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string | null
+          description?: string | null
+          dietary?: string | null
           id?: string
           image?: string | null
           name?: string
+          popular?: boolean
           pos_account_id?: string
           price?: number
           updated_at?: string | null
@@ -727,6 +736,10 @@ export type Database = {
       }
       rename_pos_table: {
         Args: { p_account_id: string; p_label: string; p_table_id: string }
+        Returns: Json
+      }
+      replace_account_menu: {
+        Args: { p_account_id: string; p_items: Json }
         Returns: Json
       }
       search_pos_accounts: {
