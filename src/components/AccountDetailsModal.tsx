@@ -538,22 +538,32 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                               <Badge variant="secondary">{order.payment_method}</Badge>
                             </TableCell>
                             <TableCell>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setOrderEditDialog({
-                                  isOpen: true,
-                                  order: {
-                                    id: order.id,
-                                    order_number: order.order_number,
-                                    payment_method: order.payment_method,
-                                    total_amount: parseFloat(order.total_amount)
-                                  }
-                                })}
-                              >
-                                <Pencil className="h-4 w-4 mr-1" />
-                                Edit
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setOrderEditDialog({
+                                    isOpen: true,
+                                    order: {
+                                      id: order.id,
+                                      order_number: order.order_number,
+                                      payment_method: order.payment_method,
+                                      total_amount: parseFloat(order.total_amount)
+                                    }
+                                  })}
+                                >
+                                  <Pencil className="h-4 w-4 mr-1" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => setDeleteOrder({ id: order.id, order_number: order.order_number })}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Delete
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
