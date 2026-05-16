@@ -28,8 +28,19 @@ import {
   Download,
   Upload,
   ExternalLink,
-  Pencil
+  Pencil,
+  Trash2
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { buildMenuCsv, parseMenuCsv, downloadCsv } from '@/lib/menu-csv';
@@ -95,7 +106,32 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
     isOpen: boolean;
     order: { id: string; order_number: string; payment_method: string; total_amount: number } | null;
   }>({ isOpen: false, order: null });
+  const [deleteOrder, setDeleteOrder] = useState<{ id: string; order_number: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
+
+  const handleDeleteOrder = async () => {
+    if (!deleteOrder) return;
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_delete_order', {
+        p_account_id: accountId,
+        p_order_id: deleteOrder.id,
+      });
+      if (error) throw error;
+      const result = data as any;
+      if (!result?.success) throw new Error(result?.message || 'Failed to delete order');
+      toast({ title: 'Order deleted', description: `${deleteOrder.order_number} removed.` });
+      setDeleteOrder(null);
+      setOrdersData(null);
+      setAnalyticsData(null);
+      await Promise.all([fetchOrdersData(), fetchAnalyticsData(), fetchAccountDetails()]);
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'Failed to delete order', variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const fetchAccountDetails = async () => {
     try {
@@ -502,22 +538,32 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                               <Badge variant="secondary">{order.payment_method}</Badge>
                             </TableCell>
                             <TableCell>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setOrderEditDialog({
-                                  isOpen: true,
-                                  order: {
-                                    id: order.id,
-                                    order_number: order.order_number,
-                                    payment_method: order.payment_method,
-                                    total_amount: parseFloat(order.total_amount)
-                                  }
-                                })}
-                              >
-                                <Pencil className="h-4 w-4 mr-1" />
-                                Edit
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setOrderEditDialog({
+                                    isOpen: true,
+                                    order: {
+                                      id: order.id,
+                                      order_number: order.order_number,
+                                      payment_method: order.payment_method,
+                                      total_amount: parseFloat(order.total_amount)
+                                    }
+                                  })}
+                                >
+                                  <Pencil className="h-4 w-4 mr-1" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => setDeleteOrder({ id: order.id, order_number: order.order_number })}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Delete
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -692,6 +738,23 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
           fetchOrdersData();
         }}
       />
+
+      <AlertDialog open={!!deleteOrder} onOpenChange={(open) => !open && setDeleteOrder(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete order {deleteOrder?.order_number}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the order, its items and payments, and adjusts revenue totals. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteOrder} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };

@@ -608,6 +608,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_order: {
+        Args: { p_account_id: string; p_order_id: string }
+        Returns: Json
+      }
       admin_login: {
         Args: { p_password: string; p_username: string }
         Returns: Json
