@@ -1,17 +1,23 @@
-## Fix "Failed to fetch order details" in Super Admin → Orders
+## Change Super Admin Password
 
-### Root cause
-`get_account_orders` RPC returns Postgres error `42803: column "o.created_at" must appear in the GROUP BY clause`. The query mixes an outer `ORDER BY o.created_at DESC LIMIT/OFFSET` on the same SELECT that aggregates with `json_agg(... ORDER BY o.created_at DESC)` — invalid without a GROUP BY. This breaks the Orders tab for every account, not just Pravasi Bakery.
+Update the Super Admin password to `12345678##` by rewriting the stored hash in the `admin_users` table.
 
-### Fix
-Rewrite `public.get_account_orders(p_account_id, p_limit, p_offset)` via migration:
+### How it works
+The `admin_login` function hashes the input password using `hash_password(password)` (SHA-256 of `password || 'salt'`) and compares it to `admin_users.password_hash`. So we just need to overwrite `password_hash` for the admin row using the same hashing function.
 
-- Select the page of orders in a subquery (with `ORDER BY created_at DESC LIMIT/OFFSET`), then `json_agg` the result.
-- Preserve ordering inside `json_agg` using `ORDER BY sub.created_at DESC`.
-- Keep `SECURITY DEFINER`, set `search_path = public`.
-- Return the same `{ success, data: { orders, total_count, limit, offset } }` shape so the UI is unchanged.
+### Steps
+1. Run a data update (via the insert/update tool) that sets:
+   ```sql
+   UPDATE public.admin_users
+   SET password_hash = public.hash_password('12345678##')
+   WHERE username = 'admin';
+   ```
+   (If you use a different admin username, I'll target that one instead.)
+2. Verify by logging in at the Super Admin screen with the new password.
 
-No UI changes.
+### Questions before I run it
+- Which admin username should I update? (default assumption: `admin`)
+- Confirm the new password is exactly `12345678##` (10 chars, two `#` at the end).
 
-### Files
-- `supabase/migrations/<new>.sql` — `CREATE OR REPLACE FUNCTION public.get_account_orders(...)`
+### Note
+Storing this password in chat is not ideal — after it works, consider changing it again to something only you know.
